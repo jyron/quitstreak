@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 
-const QUIT_DATE = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
+const TYPE_LABELS = {
+  drinking: 'alcohol-free',
+  smoking: 'smoke-free',
+  vaping: 'vape-free',
+}
 
 function getElapsed(quitDate) {
-  const diff = Date.now() - quitDate.getTime()
+  const diff = Math.max(0, Date.now() - quitDate.getTime())
 
   const seconds = Math.floor(diff / 1000)
   const minutes = Math.floor(seconds / 60)
@@ -18,20 +22,23 @@ function getElapsed(quitDate) {
   }
 }
 
-export default function StreakCounter() {
-  const [elapsed, setElapsed] = useState(() => getElapsed(QUIT_DATE))
+export default function StreakCounter({ quitDate, quitType }) {
+  const [elapsed, setElapsed] = useState(() => getElapsed(quitDate))
 
   useEffect(() => {
+    setElapsed(getElapsed(quitDate))
     const id = setInterval(() => {
-      setElapsed(getElapsed(QUIT_DATE))
+      setElapsed(getElapsed(quitDate))
     }, 1000)
     return () => clearInterval(id)
-  }, [])
+  }, [quitDate])
+
+  const label = TYPE_LABELS[quitType] ?? 'free'
 
   return (
     <div className="text-center py-12">
       <p className="text-text-secondary text-sm uppercase tracking-widest mb-6">
-        Alcohol-free for
+        {label} for
       </p>
 
       <div className="font-serif text-text">
