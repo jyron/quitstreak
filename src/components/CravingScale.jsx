@@ -1,15 +1,9 @@
-const LEVELS = [
-  { value: 1, label: 'None' },
-  { value: 2, label: 'Mild' },
-  { value: 3, label: 'Moderate' },
-  { value: 4, label: 'Strong' },
-  { value: 5, label: 'Overwhelming' },
-]
+import { CRAVING_LEVELS } from '../lib/checkinData'
 
 export default function CravingScale({ value, onChange }) {
   return (
     <div className="flex flex-wrap gap-3 justify-center">
-      {LEVELS.map((level) => {
+      {CRAVING_LEVELS.map((level) => {
         const selected = value === level.value
         return (
           <button
