@@ -42,8 +42,8 @@ export default function StreakCounter({ quitDate, quitType }) {
       </p>
 
       <div className="font-serif text-text">
-        <span className="text-7xl font-bold leading-none">{elapsed.days}</span>
-        <span className="text-xl ml-2 text-text-secondary">days</span>
+        <span className="text-xl mr-2 text-text-secondary">Day</span>
+        <span className="text-7xl font-bold leading-none">{elapsed.days + 1}</span>
       </div>
 
       <div className="flex justify-center gap-6 mt-6 font-serif text-2xl text-text">

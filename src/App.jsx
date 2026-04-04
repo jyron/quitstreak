@@ -16,13 +16,13 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/partner/:shareCode" element={<PartnerDashboard />} />
 
+      <Route path="/app/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
       <Route path="/app" element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index element={<Dashboard />} />
         <Route path="check-in" element={<CheckIn />} />
         <Route path="milestones" element={<Milestones />} />
         <Route path="settings" element={<Settings />} />
         <Route path="partner-setup" element={<PartnerSetup />} />
-        <Route path="onboarding" element={<Onboarding />} />
       </Route>
     </Routes>
   )

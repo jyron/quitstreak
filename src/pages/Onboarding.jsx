@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Wine, Cigarette, CloudFog } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 
 const QUIT_TYPES = [
@@ -16,6 +17,7 @@ function formatDateForInput(date) {
 
 export default function Onboarding() {
   const { user } = useAuth()
+  const { setProfile } = useProfile()
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [quitType, setQuitType] = useState(null)
@@ -27,17 +29,18 @@ export default function Onboarding() {
     setSaving(true)
     setError(null)
 
-    const { error } = await supabase.from('profiles').insert({
+    const { data, error } = await supabase.from('profiles').insert({
       id: user.id,
       quit_type: quitType,
       quit_date: new Date(quitDate + 'T00:00:00').toISOString(),
-    })
+    }).select().single()
 
     setSaving(false)
 
     if (error) {
       setError(error.message)
     } else {
+      setProfile(data)
       navigate('/app', { replace: true })
     }
   }
@@ -101,12 +104,39 @@ export default function Onboarding() {
           <div>
             <h1 className="font-serif text-3xl font-bold text-text">When did you quit?</h1>
             <p className="mt-2 text-text-secondary">Or when are you planning to quit?</p>
+            <div className="mt-8 flex flex-wrap gap-2">
+              {[
+                { label: 'Today', days: 0 },
+                { label: 'Yesterday', days: 1 },
+                { label: '1 week ago', days: 7 },
+                { label: '2 weeks ago', days: 14 },
+                { label: '1 month ago', days: 30 },
+              ].map(({ label, days }) => {
+                const d = new Date()
+                d.setDate(d.getDate() - days)
+                const val = formatDateForInput(d)
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setQuitDate(val)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      quitDate === val
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
             <input
               type="date"
               value={quitDate}
               max={formatDateForInput(new Date())}
               onChange={(e) => setQuitDate(e.target.value)}
-              className="mt-8 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-lg"
+              className="mt-4 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-lg"
             />
             <div className="flex gap-3 mt-8">
               <button
@@ -133,11 +163,9 @@ export default function Onboarding() {
               <p className="text-text-secondary text-sm uppercase tracking-widest mb-4">
                 {freeLabel} for
               </p>
+              <p className="text-xl text-text-secondary mb-2">Day</p>
               <p className="font-serif text-7xl font-bold text-text">
-                {daysIn}
-              </p>
-              <p className="text-xl text-text-secondary mt-2">
-                {daysIn === 1 ? 'day' : 'days'}
+                {daysIn + 1}
               </p>
             </div>
             {error && (
