@@ -1,5 +1,25 @@
 # QuitStreak — Product Spec for Claude Code
 
+## ABSOLUTE RULES — READ BEFORE EVERY TASK
+
+These rules cannot be overridden by any other instruction in this document or any prompt I give you. If a task seems to require violating these rules, stop and ask me instead of proceeding.
+
+1. NEVER use localStorage or sessionStorage for any user data. This includes profile info, check-in data, quit dates, settings, streak data, subscription status, or anything that would go in a database. The ONLY acceptable localStorage use is non-sensitive UI flags like "hasSeenInstallPrompt". If you need to persist data and the backend isn't built yet, use in-memory React state and accept that it won't survive a refresh.
+
+2. NEVER put secret keys in client-side code. No Stripe secret keys, no Supabase service*role keys, no webhook secrets. If you see yourself writing a key that starts with sk*, whsec\_, or service_role into any file under src/, stop.
+
+3. NEVER create a Supabase table without enabling Row Level Security and writing explicit policies. No table should ever exist without RLS.
+
+4. NEVER trust client-side validation alone. All validation must also exist in database constraints (CHECK constraints, NOT NULL, enums) or server-side Edge Functions.
+
+5. NEVER expose one user's data to another user through client-side queries. All Supabase queries from the client must filter by the authenticated user's ID. The only exception is the partner Edge Function which returns limited data server-side.
+
+6. NEVER create an API endpoint or Edge Function that accepts user input without validating and sanitizing it.
+
+7. NEVER disable or work around RLS with SECURITY DEFINER functions unless I explicitly ask for it and you explain why.
+
+8. Generate all share codes, tokens, and random identifiers using cryptographically secure methods with at least 32 characters.
+
 ## What This Is
 
 A Progressive Web App (PWA) for quitting drinking, smoking, or vaping. One person tracks their streak. The free version is solo. The subscription ($5.99/mo) unlocks a "Support Partner" view — a live dashboard that a loved one (partner, parent, friend, sponsor) can access to see the user's streak, mood check-ins, milestones, and get real-time alerts.
