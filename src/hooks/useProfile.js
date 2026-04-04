@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 import { useAuth } from './useAuth'
 import { supabase } from '../lib/supabase'
 
-export function useProfile() {
+const ProfileContext = createContext(null)
+
+export function ProfileProvider({ children }) {
   const { user } = useAuth()
   const [profile, setProfile] = useState(undefined) // undefined = loading
   const [loading, setLoading] = useState(true)
@@ -52,5 +54,17 @@ export function useProfile() {
     return { data, error }
   }
 
-  return { profile, loading, error, updateProfile }
+  return (
+    <ProfileContext.Provider value={{ profile, loading, error, updateProfile, setProfile }}>
+      {children}
+    </ProfileContext.Provider>
+  )
+}
+
+export function useProfile() {
+  const context = useContext(ProfileContext)
+  if (context === null) {
+    throw new Error('useProfile must be used within a ProfileProvider')
+  }
+  return context
 }
