@@ -8,6 +8,22 @@ This is an MVP. Build it as a single-codebase PWA using React + Vite + Tailwind 
 
 ---
 
+SECURITY RULES — APPLY TO ALL PHASES
+These rules override everything else. Every phase must follow them.
+
+SUPABASE ROW LEVEL SECURITY: Every table MUST have RLS enabled. Every table MUST have explicit policies. Never use SECURITY DEFINER functions as a workaround for missing policies. Policies must enforce:
+
+Users can only SELECT, INSERT, UPDATE, DELETE their own rows (matched by auth.uid() = user_id)
+The partner data endpoint is the ONLY exception — it reads limited data filtered by share_code, via a Supabase Edge Function that runs server-side, never via client-side queries
+
+NEVER put secrets in client code. The Supabase anon key is fine (it's designed to be public). The Stripe secret key, webhook secret, and any server-side keys go ONLY in Supabase Edge Function environment variables. If I see a key starting with sk* or whsec* anywhere in the src/ folder, that is a critical bug.
+INPUT VALIDATION: All user inputs must be validated before database insertion. Check-in mood and craving values must be integers 1-5 — enforce this in the database with CHECK constraints AND in the application code. Notes must be trimmed and limited to 280 characters. Quit type must be one of the three enum values. Never trust client-side validation alone.
+AUTH: Use Supabase auth exclusively. Never roll custom auth. Never store session tokens manually. Never put auth tokens in URLs (except the magic link Supabase generates). The partner share_code in the URL is NOT an auth token — it grants read-only access to limited data only.
+PARTNER SHARE CODES: Generate share codes server-side using crypto-strength randomness (minimum 32 characters, alphanumeric). Never use sequential IDs, UUIDs alone, or short codes. The share code is the only thing protecting someone's sobriety data from public access — treat it like a password.
+STRIPE WEBHOOKS: Always verify the webhook signature using the webhook secret. Never trust webhook data without signature verification. Never process payments client-side.
+RATE LIMITING: The encouragement message endpoint (partner sending messages to user) must be rate limited — maximum 10 messages per hour per share_code. Implement this in the Edge Function, not client-side.
+NO LOCALSTORAGE FOR SENSITIVE DATA: Never store profile data, auth tokens, check-in history, or subscription status in localStorage or sessionStorage. Supabase handles session persistence through its own secure mechanism. The only thing acceptable in localStorage is non-sensitive UI preferences like "has seen install prompt."
+
 ## Tech Stack
 
 - **Frontend:** React 18+ with Vite, Tailwind CSS, deployed as PWA (service worker, manifest.json, installable)
@@ -23,6 +39,7 @@ This is an MVP. Build it as a single-codebase PWA using React + Vite + Tailwind 
 **Tone:** Warm, calm, grounded. NOT clinical or sterile. NOT gamified/childish. Think: a quiet room with good lighting. The feeling of a deep breath. Someone who believes in you.
 
 **Color palette:**
+
 - Background: warm off-white (#FAF8F5) or very soft warm gray
 - Primary accent: a deep, earthy teal (#2D6A6A) — represents growth, calm
 - Secondary accent: warm amber/gold (#D4A053) — represents milestones, warmth
@@ -31,7 +48,8 @@ This is an MVP. Build it as a single-codebase PWA using React + Vite + Tailwind 
 
 **Typography:** Use a distinctive serif for headings (e.g., "Playfair Display" or "Lora") paired with a clean sans-serif for body (e.g., "DM Sans" or "Plus Jakarta Sans"). The serif gives it emotional weight. The sans keeps it readable. Import from Google Fonts.
 
-**Visual feel:** 
+**Visual feel:**
+
 - Generous whitespace, large touch targets
 - Soft rounded corners (12-16px)
 - Subtle shadows, no hard borders
@@ -64,16 +82,19 @@ This is an MVP. Build it as a single-codebase PWA using React + Vite + Tailwind 
 ### 1. Onboarding (first launch only)
 
 Screen 1: "What are you quitting?"
+
 - Three large tappable cards: Drinking / Smoking / Vaping
 - User picks one (can be changed later in settings)
 - Store as `quit_type` enum
 
 Screen 2: "When did you quit?" (or "When are you quitting?")
+
 - Date picker, defaults to today
 - Allow past dates (someone might be 14 days in already)
 - Store as `quit_date` timestamp
 
 Screen 3: "You're on your way."
+
 - Show their current streak (even if it's Day 0)
 - Big, warm, immediate reinforcement
 - CTA: "Start tracking" → goes to /app
@@ -85,6 +106,7 @@ Auth happens here — use Supabase magic link (email) or Google OAuth. Keep it m
 This is the most important screen. The user will open this every single day. It must be beautiful, motivating, and fast.
 
 **Hero: The Streak Counter**
+
 - Center of the screen, dominant
 - Shows: "[X] days [Y] hours [Z] minutes" — live ticking
 - The number should be LARGE (48px+ on mobile for the day count)
@@ -99,12 +121,11 @@ This is the most important screen. The user will open this every single day. It 
 
 - **"How are you feeling?" button** → navigates to /app/check-in
   - Prominent but not pushy. This is how we get daily engagement.
-  
 - **Next milestone card**
   - Shows the next upcoming milestone with a progress bar
   - E.g., "3 days away from 2 Weeks 🪙" with a progress bar at 78%
-  
 - **Stats row** (compact, horizontal scroll or 2x2 grid):
+
   - Money saved (user inputs their daily spend during onboarding or settings; calculate: days × daily_spend)
   - Cigarettes not smoked / drinks not had (days × daily_amount, set in settings)
   - Health stat (a single rotating health fact, e.g., "Your blood pressure has started to normalize" — these are time-based and well-documented for smoking/drinking/vaping)
@@ -120,20 +141,24 @@ This is the most important screen. The user will open this every single day. It 
 Quick, 3-step flow (should take <30 seconds):
 
 Step 1: "How's your mood?"
+
 - 5 emoji-style options in a row: 😤 😟 😐 🙂 😊
 - But don't use literal emojis — design custom simple face icons or use abstract representations (colored circles with expressions) that match the app's design language
 - Single tap to select
 
 Step 2: "Any cravings today?"
+
 - Scale: None / Mild / Moderate / Strong / Overwhelming
 - 5 tappable pills in a row
 
 Step 3: "Anything on your mind?" (optional)
+
 - Small text area, max 280 chars
 - Placeholder: "This is just for you." (unless partner is connected, then: "Your partner can see this too.")
 - Skip button visible
 
 **After submission:**
+
 - Warm confirmation: "Logged. You're doing great." (or contextual — "Day 14. Two weeks. That's real.")
 - Navigate back to dashboard
 - Store: { mood: 1-5, craving: 1-5, note: string, timestamp }
@@ -145,6 +170,7 @@ Step 3: "Anything on your mind?" (optional)
 **Milestone definitions (hardcoded):**
 
 For ALL quit types:
+
 - 24 hours
 - 3 days
 - 1 week
@@ -159,12 +185,14 @@ For ALL quit types:
 - 5 years
 
 **Display:**
+
 - Vertical timeline, scrollable
 - Past milestones: shown as "earned" with a filled badge, the date achieved, and a health benefit fact
 - Next milestone: highlighted, with countdown
 - Future milestones: shown as locked/dimmed outlines
 
 **Health benefit facts per milestone (smoking example):**
+
 - 24h: "Your heart rate and blood pressure have started dropping."
 - 3d: "Nicotine is leaving your body. The worst cravings are peaking — you're in the hardest part."
 - 1w: "Your lungs are beginning to clear. You might cough more — that's healing."
@@ -179,6 +207,7 @@ For ALL quit types:
 Create equivalent fact sets for drinking and vaping. Research these carefully — they should be medically accurate and encouraging, not scary.
 
 **When a milestone is reached:**
+
 - Push notification (if enabled): "🏆 You just hit [milestone]. [health fact]."
 - On next app open: a modal celebration screen — the milestone badge, the fact, and a "Share" button
 - The share button generates a shareable image (canvas-rendered card with streak count and milestone) + native share sheet (Web Share API)
@@ -206,12 +235,14 @@ This is the paid feature. This is what makes the app special and shareable. Buil
 **Price:** $5.99/month or $39.99/year (show both, default to annual with "Save 44%" badge)
 
 **Trigger points (places the user sees the upsell):**
+
 1. The persistent card at the bottom of the main dashboard
 2. When a milestone is reached: "Share this moment with someone who matters. They can follow your whole journey."
 3. In settings, under "Partner Support"
 4. On the partner-setup page
 
 **Upsell copy (vary across touchpoints, keep it emotional, never pushy):**
+
 - "Recovery is easier when someone's in your corner."
 - "Let someone you trust follow along. They'll see your streaks, your milestones, and know when you need support."
 - "The best gift you can give someone who worries about you: proof that you're doing it."
@@ -223,6 +254,7 @@ This is the paid feature. This is what makes the app special and shareable. Buil
 Only accessible to subscribed users.
 
 **Flow:**
+
 1. User taps "Invite your support partner"
 2. System generates a unique share code / URL: `https://quitstreak.app/partner/abc123def`
 3. User sends this link to their person (via text, email, WhatsApp — use Web Share API, or show a copyable link)
@@ -231,6 +263,7 @@ Only accessible to subscribed users.
 **Partner can optionally create an account** (to get push notifications for milestones) or just bookmark the link.
 
 **Management:**
+
 - User can see who has accessed their partner link
 - User can revoke the link (generates a new one, old one stops working)
 - User can pause sharing (temporarily hides data without revoking)
@@ -244,18 +277,22 @@ This is what the partner sees. It must be beautiful, emotionally resonant, and m
 **What the partner sees:**
 
 1. **The streak counter** — same live-ticking display as the main dashboard
+
    - Header: "[Name]'s Journey" (user sets their display name)
    - Sub: "has been [smoke-free/alcohol-free/vape-free] for..."
    - The big counter
 
 2. **Recent mood check-ins** — last 7 days shown as a row of mood indicators (the face icons) with dates
+
    - If the user wrote a note, it's shown (the user knows this — they were told during check-in)
    - Craving level shown as a subtle color intensity on each day's indicator
 
 3. **Milestone feed** — which milestones have been hit, with dates
+
    - Next upcoming milestone with countdown
 
 4. **"Send encouragement" button**
+
    - Partner can send a short message (280 chars max)
    - Delivered as a push notification + visible on the user's dashboard as a small card: "💬 [Partner name] says: [message]"
    - This is critical for engagement and emotional stickiness
@@ -263,11 +300,13 @@ This is what the partner sees. It must be beautiful, emotionally resonant, and m
 5. **Stats** — money saved, consumption avoided (same as main dashboard)
 
 **What the partner does NOT see:**
+
 - The user's email or account details
 - Ability to edit anything
 - Historical check-in notes older than 7 days (respect privacy, keep it current)
 
 **Design:**
+
 - The partner dashboard should feel like looking through a window into someone's progress
 - Warm, read-only, supportive
 - Include a small fixed footer: "Powered by QuitStreak — Start your own journey" (acquisition funnel for the partner themselves)
@@ -281,27 +320,32 @@ For unauthenticated visitors. Must convert to signups.
 **Structure:**
 
 1. **Hero section**
+
    - Headline: "Quit drinking. Quit smoking. Quit vaping. And prove it to someone who cares."
    - Subhead: "Track your streak, log your journey, and share a live dashboard with the person rooting for you hardest."
    - CTA button: "Start free — no credit card" → goes to onboarding/auth
    - Below CTA: "Used by X people to quit for good" (show a real count from the DB, or omit until you have numbers)
 
 2. **How it works** — 3 steps, illustrated with app screenshots or simple illustrations
+
    - "1. Set your quit date" — brief description
-   - "2. Track daily" — brief description  
+   - "2. Track daily" — brief description
    - "3. Share with someone who cares" — brief description with "(subscription)" tag
 
 3. **The partner view preview**
+
    - A mockup/screenshot of the partner dashboard
    - Copy: "Your mom. Your partner. Your best friend. Your sponsor. Give them peace of mind."
    - This section sells the subscription before they even sign up
 
 4. **Social proof section** — Leave placeholder slots for testimonials. For launch, use 2-3 that you write yourself based on realistic scenarios:
+
    - "My wife can see my streak. That's more accountability than any app ever gave me."
    - "I bought this for my brother. He's 47 days in. I check every morning."
    - "The daily check-in takes 10 seconds but it's the thing that keeps me honest."
 
 5. **Pricing section**
+
    - Free: Streak tracking, daily check-ins, milestones, stats, push notifications
    - QuitStreak+ ($5.99/mo or $39.99/yr): Everything free + Partner Support Dashboard, partner milestone alerts, encouragement messages, priority support
    - CTA: "Start free" for both (upsell happens in-app)
@@ -376,6 +420,7 @@ Create a function `get_partner_data(share_code)` that returns: profile (display_
 ## PWA Configuration
 
 **manifest.json:**
+
 ```json
 {
   "name": "QuitStreak",
@@ -403,12 +448,14 @@ Create a function `get_partner_data(share_code)` that returns: profile (display_
 These are subtle but critical. They're the difference between a dead app and one that retains and converts.
 
 ### Free tier engagement:
+
 1. **Daily check-in streak** — separate from the quit streak, this tracks consecutive days of check-ins. Show a small "🔥 5-day check-in streak" indicator. This creates a second habit loop.
 2. **Morning notification** — "Day [X]. You're still going. Quick check-in?" Deep-links to /app/check-in.
 3. **Milestone notifications** — celebrate even small ones. Day 1, Day 3, Day 7 feel HUGE to someone quitting.
 4. **The counter never stops** — even if you don't open the app for a week, your streak keeps counting. When you come back, it's satisfying to see "14 days" instead of "you missed 6 days."
 
 ### Conversion hooks (free → paid):
+
 1. **After every milestone celebration modal**, show: "Someone is rooting for you. Let them see this too." with a secondary CTA to learn about partner view. Not a hard gate — just a warm suggestion.
 2. **After 7 days**, show a one-time card on the dashboard: "You've been at this for a week. That's worth sharing." Links to partner feature explainer.
 3. **After any check-in where craving = 4 or 5** (strong/overwhelming), show: "Tough day. Having someone in your corner helps. [Learn about Partner Support]"
@@ -416,6 +463,7 @@ These are subtle but critical. They're the difference between a dead app and one
 5. **The partner dashboard footer** always shows: "Start your own journey — quitstreak.app" — the partner becomes a potential user.
 
 ### Retention:
+
 1. If a user hasn't opened the app in 3+ days, send a push: "Still going strong? Day [X] and counting."
 2. If a user resets their streak (relapse), handle it with ZERO judgment: "Starting over takes courage. Every Day 1 is a choice to try again." Give them a "Reset quit date" flow, not a punishing screen.
 
