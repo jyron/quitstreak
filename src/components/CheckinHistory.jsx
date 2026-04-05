@@ -38,7 +38,7 @@ function isToday(date) {
     date.getDate() === now.getDate()
 }
 
-export default function CheckinHistory({ checkins }) {
+export default function CheckinHistory({ checkins, readOnly = false }) {
   const navigate = useNavigate()
   const days = getLast7Days()
 
@@ -65,7 +65,7 @@ export default function CheckinHistory({ checkins }) {
                     />
                   </div>
                 </>
-              ) : today ? (
+              ) : today && !readOnly ? (
                 <button
                   onClick={() => navigate('/app/check-in')}
                   className="w-7 h-7 rounded-full border-2 border-dashed border-primary/40 flex items-center justify-center hover:border-primary hover:bg-primary/5 transition-colors"

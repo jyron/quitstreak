@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Wine, Cigarette, CloudFog } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Wine, Cigarette, CloudFog, LinkIcon, Copy, Check } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 
@@ -129,6 +129,9 @@ export default function Settings() {
         </button>
       </div>
 
+      {/* Share link */}
+      <ShareSection profile={profile} />
+
       {/* Sign out */}
       <div className="mt-12 pt-6 border-t border-gray-100">
         <button
@@ -138,6 +141,62 @@ export default function Settings() {
           Sign out
         </button>
       </div>
+    </div>
+  )
+}
+
+function ShareSection({ profile }) {
+  const [copied, setCopied] = useState(false)
+
+  const shareUrl = profile?.share_code
+    ? `${window.location.origin}/partner/${profile.share_code}`
+    : null
+
+  async function handleCopy() {
+    if (!shareUrl) return
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-100">
+      <div className="flex items-center gap-2 mb-3">
+        <LinkIcon className="w-4 h-4 text-text-secondary" />
+        <label className="text-sm font-medium text-text-secondary">Partner Support</label>
+      </div>
+
+      {shareUrl ? (
+        <div className="bg-white rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-text truncate font-mono flex-1">{shareUrl}</p>
+            <button
+              onClick={handleCopy}
+              className="flex-shrink-0 p-2 rounded-lg text-primary hover:bg-primary/5 transition-colors"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            </button>
+          </div>
+          <Link
+            to="/app/partner-setup"
+            className="mt-2 inline-block text-sm text-primary font-medium hover:text-primary/80 transition-colors"
+          >
+            Manage sharing &rarr;
+          </Link>
+        </div>
+      ) : (
+        <Link
+          to="/app/partner-setup"
+          className="block bg-white rounded-xl border border-gray-100 p-4 hover:border-primary/20 hover:shadow-sm transition-all"
+        >
+          <p className="font-medium text-text">Share your journey</p>
+          <p className="text-sm text-text-secondary mt-0.5">
+            Let someone you trust follow your progress.
+          </p>
+        </Link>
+      )}
     </div>
   )
 }

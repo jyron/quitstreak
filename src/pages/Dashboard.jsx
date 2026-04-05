@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Heart, X } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
 import CheckinHistory from '../components/CheckinHistory'
 import FaceIcon from '../components/FaceIcon'
 import { useProfile } from '../hooks/useProfile'
 import { useCheckins } from '../hooks/useCheckins'
+import { useNudges } from '../hooks/useNudges'
 import { getMood, getCravingLevel } from '../lib/checkinData'
 
 const TYPE_LABELS = {
@@ -16,6 +18,7 @@ const TYPE_LABELS = {
 export default function Dashboard() {
   const { profile, loading } = useProfile()
   const { checkins, loading: checkinsLoading, todayCheckin } = useCheckins()
+  const { nudges, dismissNudges } = useNudges()
   const navigate = useNavigate()
 
   const quitDate = useMemo(() => new Date(profile?.quit_date), [profile?.quit_date])
@@ -47,6 +50,23 @@ export default function Dashboard() {
         quitDate={quitDate}
         quitType={profile.quit_type}
       />
+
+      {/* Nudge banner */}
+      {nudges.length > 0 && (
+        <div className="mt-4 bg-secondary/10 border border-secondary/20 rounded-xl px-5 py-4 flex items-start gap-3">
+          <Heart className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium text-text">Someone is cheering you on!</p>
+            <p className="text-sm text-text-secondary mt-0.5">They'd love to see a check-in today.</p>
+          </div>
+          <button
+            onClick={dismissNudges}
+            className="text-text-secondary hover:text-text transition-colors flex-shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Today check-in CTA / summary */}
       <div className="mt-4">
