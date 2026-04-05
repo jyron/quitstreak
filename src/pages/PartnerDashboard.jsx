@@ -47,7 +47,7 @@ export default function PartnerDashboard() {
             to="/"
             className="mt-6 inline-block py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
           >
-            Start your own journey
+            Go to QuitStreak
           </Link>
         </div>
       </div>
@@ -59,19 +59,19 @@ export default function PartnerDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-6 pt-8 pb-24">
-        {/* Invite banner */}
+        {/* Sign-in banner for supporters who don't have an account */}
         <div className="bg-primary/5 border border-primary/10 rounded-xl px-5 py-4 mb-6">
           <p className="font-serif text-lg font-semibold text-text">
-            {displayName} shared their quitting journey with you
+            {displayName} is sharing their journey with you
           </p>
           <p className="mt-1 text-sm text-text-secondary">
-            Join now to support them and track your own progress.
+            Sign in to send encouragement whenever you want — they'll see it immediately.
           </p>
           <Link
-            to="/"
+            to={`/?ref=${shareCode}`}
             className="mt-3 inline-block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
           >
-            Create your free account &rarr;
+            Sign in to support {displayName} &rarr;
           </Link>
         </div>
 
@@ -129,9 +129,11 @@ export default function PartnerDashboard() {
       {/* Footer */}
       <div className="fixed bottom-0 inset-x-0 bg-white/80 backdrop-blur-sm border-t border-gray-100 py-3 px-6">
         <p className="text-center text-sm text-text-secondary">
-          Powered by <Link to="/" className="font-medium text-primary hover:text-primary/80">QuitStreak</Link>
-          {' '}&mdash;{' '}
-          <Link to="/" className="text-primary hover:text-primary/80">Start your own journey</Link>
+          Powered by{' '}
+          <Link to="/" className="font-medium text-primary hover:text-primary/80">
+            QuitStreak
+          </Link>
+          {' '}&mdash; help someone quit for good
         </p>
       </div>
     </div>
