@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { Calendar, ClipboardCheck, Users, Check } from 'lucide-react'
@@ -59,10 +59,19 @@ const plusFeatures = [
 
 export default function Landing() {
   const { user, loading } = useAuth()
+  const [searchParams] = useSearchParams()
+  const ref = searchParams.get('ref')
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState(null)
   const [sending, setSending] = useState(false)
+
+  // Store the ref in localStorage so we can restore it after the magic link redirect
+  useEffect(() => {
+    if (ref) {
+      localStorage.setItem('pendingShareCode', ref)
+    }
+  }, [ref])
 
   if (loading) {
     return (
@@ -72,7 +81,11 @@ export default function Landing() {
     )
   }
 
+  // Already logged in: if they came from a partner link, send them there
   if (user) {
+    if (ref) {
+      return <Navigate to={`/partner/${ref}`} replace />
+    }
     return <Navigate to="/app" replace />
   }
 
@@ -81,10 +94,14 @@ export default function Landing() {
     setError(null)
     setSending(true)
 
+    const redirectTo = ref
+      ? `${window.location.origin}/app?ref=${ref}`
+      : `${window.location.origin}/app`
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/app`,
+        emailRedirectTo: redirectTo,
       },
     })
 
@@ -119,6 +136,16 @@ export default function Landing() {
 
         {/* Sign in form */}
         <div className="mt-10 max-w-lg">
+          {ref && (
+            <div className="mb-4 bg-primary/5 border border-primary/10 rounded-xl px-4 py-3">
+              <p className="text-sm text-primary font-medium">
+                You're signing in to follow someone's journey.
+              </p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                You'll be taken back to their progress page after signing in.
+              </p>
+            </div>
+          )}
           {submitted ? (
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <p className="font-serif text-xl font-semibold text-primary">Check your email</p>
@@ -129,7 +156,7 @@ export default function Landing() {
           ) : (
             <form onSubmit={handleSignIn}>
               <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
-                Enter your email to get started
+                {ref ? 'Enter your email to continue' : 'Enter your email to get started'}
               </label>
               <input
                 id="email"
@@ -145,11 +172,14 @@ export default function Landing() {
                 disabled={sending}
                 className="mt-4 w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {sending ? 'Sending...' : 'Start free — no credit card'}
+                {sending ? 'Sending...' : ref ? 'Continue' : 'Start free — no credit card'}
               </button>
               {error && (
                 <p className="mt-3 text-sm text-danger">{error}</p>
               )}
+              <p className="mt-3 text-xs text-text-secondary text-center">
+                Already have an account? Use the same email — the magic link signs you in automatically.
+              </p>
             </form>
           )}
         </div>

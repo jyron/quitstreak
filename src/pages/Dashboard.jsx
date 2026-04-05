@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Heart, X } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Heart, X, ArrowRight } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
 import CheckinHistory from '../components/CheckinHistory'
 import FaceIcon from '../components/FaceIcon'
@@ -13,6 +13,42 @@ const TYPE_LABELS = {
   drinking: 'alcohol',
   smoking: 'smoking',
   vaping: 'vaping',
+}
+
+function SupporterHome({ profile }) {
+  const lastPartner = localStorage.getItem('pendingShareCode')
+
+  return (
+    <div className="px-6 pt-12 pb-6 flex flex-col items-center text-center">
+      <Heart className="w-12 h-12 text-primary/30 mb-4" />
+      <h1 className="font-serif text-2xl font-bold text-text">
+        {profile.display_name !== 'A supporter' && profile.display_name !== 'Someone brave'
+          ? `Welcome, ${profile.display_name}`
+          : 'You\'re a supporter'}
+      </h1>
+      <p className="mt-3 text-text-secondary leading-relaxed max-w-sm">
+        You're here to support someone on their journey. You don't have a quitting streak of your own yet.
+      </p>
+
+      {lastPartner && (
+        <Link
+          to={`/partner/${lastPartner}`}
+          className="mt-8 w-full max-w-sm py-4 px-5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+        >
+          View their journey
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      )}
+
+      <Link
+        to="/app/onboarding"
+        className="mt-4 w-full max-w-sm py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-primary/20 hover:shadow-md transition-all"
+      >
+        <p className="font-medium text-text">Start your own journey</p>
+        <p className="text-sm text-text-secondary mt-0.5">Track your own streak and check-ins</p>
+      </Link>
+    </div>
+  )
 }
 
 export default function Dashboard() {
@@ -29,6 +65,11 @@ export default function Dashboard() {
         <div className="text-text-secondary">Loading...</div>
       </div>
     )
+  }
+
+  // Supporter accounts: no quitting journey, show a different home
+  if (profile.account_type === 'supporter') {
+    return <SupporterHome profile={profile} />
   }
 
   const todayMood = todayCheckin ? getMood(todayCheckin.mood) : null
