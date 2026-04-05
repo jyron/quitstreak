@@ -60,6 +60,17 @@ export function usePartnerData(shareCode) {
 
       setProfile(profileData)
 
+      // Persist the follow relationship for authenticated users (fire and forget)
+      if (user) {
+        supabase
+          .from('supporter_follows')
+          .upsert(
+            { supporter_id: user.id, share_code: shareCode },
+            { onConflict: 'supporter_id,share_code', ignoreDuplicates: true }
+          )
+          .then()
+      }
+
       // Fetch checkins for this user
       const { data: checkinData, error: checkinError } = await supabase
         .from('checkins')
