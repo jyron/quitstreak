@@ -5,12 +5,19 @@ import { supabase } from '../lib/supabase'
 const ProfileContext = createContext(null)
 
 export function ProfileProvider({ children }) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [profile, setProfile] = useState(undefined) // undefined = loading
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    // Don't touch profile state until auth has resolved.
+    // Without this guard, the effect fires on mount with user=null and sets
+    // profile=null + loading=false. When auth then resolves with a real user,
+    // RequireAuth briefly sees (profile=null, loading=false, user=<real>)
+    // and redirects to onboarding before the fetch can run.
+    if (authLoading) return
+
     if (!user) {
       setProfile(null)
       setLoading(false)
@@ -39,7 +46,7 @@ export function ProfileProvider({ children }) {
 
     fetchProfile()
     return () => { cancelled = true }
-  }, [user?.id])
+  }, [user?.id, authLoading])
 
   async function updateProfile(updates) {
     if (!user) return { error: 'Not authenticated' }
