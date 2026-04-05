@@ -19,6 +19,11 @@ export default function RequireAuth({ children }) {
     return <Navigate to="/" replace />
   }
 
+  // Profile exists — don't let user linger on onboarding
+  if (profile && location.pathname === '/app/onboarding') {
+    return <Navigate to="/app" replace />
+  }
+
   // Profile not yet created — send to onboarding, unless already there
   if (profile === null && location.pathname !== '/app/onboarding') {
     return <Navigate to="/app/onboarding" replace />

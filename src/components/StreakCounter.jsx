@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const TYPE_LABELS = {
   drinking: 'alcohol-free',
@@ -24,14 +24,22 @@ function getElapsed(quitDate) {
 
 export default function StreakCounter({ quitDate, quitType }) {
   const [elapsed, setElapsed] = useState(() => getElapsed(quitDate))
+  const quitDateRef = useRef(quitDate)
 
+  // Keep the ref current and immediately reflect any quitDate prop change
   useEffect(() => {
+    quitDateRef.current = quitDate
     setElapsed(getElapsed(quitDate))
+  }, [quitDate])
+
+  // Interval starts once on mount and never restarts due to re-renders.
+  // Reads quitDate via ref so it always uses the latest value.
+  useEffect(() => {
     const id = setInterval(() => {
-      setElapsed(getElapsed(quitDate))
+      setElapsed(getElapsed(quitDateRef.current))
     }, 1000)
     return () => clearInterval(id)
-  }, [quitDate])
+  }, [])
 
   const label = TYPE_LABELS[quitType] ?? 'free'
 
