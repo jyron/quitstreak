@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Heart, X, ArrowRight } from 'lucide-react'
+import { Heart, X, ArrowRight, Trophy } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
 import CheckinHistory from '../components/CheckinHistory'
 import FaceIcon from '../components/FaceIcon'
@@ -15,11 +15,33 @@ const TYPE_LABELS = {
   vaping: 'vaping',
 }
 
+const MILESTONES = [
+  { key: '1d', label: '1 Day', days: 1 },
+  { key: '3d', label: '3 Days', days: 3 },
+  { key: '1w', label: '1 Week', days: 7 },
+  { key: '2w', label: '2 Weeks', days: 14 },
+  { key: '1m', label: '1 Month', days: 30 },
+  { key: '2m', label: '2 Months', days: 60 },
+  { key: '3m', label: '3 Months', days: 90 },
+  { key: '6m', label: '6 Months', days: 180 },
+  { key: '1y', label: '1 Year', days: 365 },
+  { key: '18m', label: '18 Months', days: 547 },
+  { key: '2y', label: '2 Years', days: 730 },
+  { key: '5y', label: '5 Years', days: 1825 },
+]
+
+function getNextMilestone(dayCount) {
+  for (const m of MILESTONES) {
+    if (dayCount < m.days) return m
+  }
+  return null
+}
+
 function SupporterHome({ profile }) {
   const lastPartner = localStorage.getItem('pendingShareCode')
 
   return (
-    <div className="px-6 pt-12 pb-6 flex flex-col items-center text-center">
+    <div className="px-6 pt-12 pb-6 flex flex-col items-center text-center animate-fade-in">
       <Heart className="w-12 h-12 text-primary/30 mb-4" />
       <h1 className="font-serif text-2xl font-bold text-text">
         {profile.display_name !== 'A supporter' && profile.display_name !== 'Someone brave'
@@ -67,7 +89,6 @@ export default function Dashboard() {
     )
   }
 
-  // Supporter accounts: no quitting journey, show a different home
   if (profile.account_type === 'supporter') {
     return <SupporterHome profile={profile} />
   }
@@ -75,10 +96,14 @@ export default function Dashboard() {
   const todayMood = todayCheckin ? getMood(todayCheckin.mood) : null
   const todayCraving = todayCheckin ? getCravingLevel(todayCheckin.craving) : null
 
+  const dayCount = Math.floor((Date.now() - quitDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const nextMilestone = getNextMilestone(dayCount)
+  const progress = nextMilestone ? Math.min(100, Math.round((dayCount / nextMilestone.days) * 100)) : 100
+
   return (
     <div className="px-6 pt-8 pb-6">
       {/* Quit context header */}
-      <div className="text-center mb-2">
+      <div className="text-center mb-2 opacity-0 animate-fade-in">
         <h1 className="font-serif text-2xl font-bold text-text">
           {profile.display_name !== 'Someone brave' ? `${profile.display_name}'s Journey` : 'Your Journey'}
         </h1>
@@ -94,7 +119,7 @@ export default function Dashboard() {
 
       {/* Nudge banner */}
       {nudges.length > 0 && (
-        <div className="mt-4 bg-secondary/10 border border-secondary/20 rounded-xl px-5 py-4 flex items-start gap-3">
+        <div className="mt-4 bg-secondary/10 border border-secondary/20 rounded-xl px-5 py-4 flex items-start gap-3 opacity-0 animate-fade-in-up stagger-1">
           <Heart className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="font-medium text-text">
@@ -113,8 +138,36 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Next milestone card */}
+      {nextMilestone && (
+        <button
+          onClick={() => navigate('/app/milestones')}
+          className="w-full mt-4 py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-secondary/30 hover:shadow-md transition-all opacity-0 animate-fade-in-up stagger-2"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
+              <Trophy className="w-5 h-5 text-secondary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-text">
+                Next: <span className="text-secondary">{nextMilestone.label}</span>
+              </p>
+              <div className="mt-1.5 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-secondary/70 rounded-full transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-xs text-text-secondary mt-1">
+                {nextMilestone.days - dayCount} {nextMilestone.days - dayCount === 1 ? 'day' : 'days'} to go
+              </p>
+            </div>
+          </div>
+        </button>
+      )}
+
       {/* Today check-in CTA / summary */}
-      <div className="mt-4">
+      <div className="mt-4 opacity-0 animate-fade-in-up stagger-3">
         {todayCheckin && todayMood && todayCraving ? (
           <button
             onClick={() => navigate('/app/check-in')}
@@ -147,7 +200,7 @@ export default function Dashboard() {
 
       {/* 7-day check-in history */}
       {!checkinsLoading && (
-        <div className="mt-6">
+        <div className="mt-6 opacity-0 animate-fade-in-up stagger-4">
           <CheckinHistory checkins={checkins} />
         </div>
       )}

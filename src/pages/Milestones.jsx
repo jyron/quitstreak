@@ -1,4 +1,5 @@
-import { Check } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Check, Trophy, X, Star } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
 
 const MILESTONES = [
@@ -7,9 +8,13 @@ const MILESTONES = [
   { days: 7, label: '1 Week' },
   { days: 14, label: '2 Weeks' },
   { days: 30, label: '1 Month' },
+  { days: 60, label: '2 Months' },
   { days: 90, label: '3 Months' },
   { days: 180, label: '6 Months' },
   { days: 365, label: '1 Year' },
+  { days: 547, label: '18 Months' },
+  { days: 730, label: '2 Years' },
+  { days: 1825, label: '5 Years' },
 ]
 
 function addDays(date, days) {
@@ -22,8 +27,82 @@ function formatDate(date) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function getNextMilestone(dayCount) {
+  for (const m of MILESTONES) {
+    if (dayCount < m.days) return m
+  }
+  return null
+}
+
+function CelebrationOverlay({ milestone, onClose }) {
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    requestAnimationFrame(() => setShow(true))
+  }, [])
+
+  const confettiColors = ['#2D6A6A', '#D4A053', '#C0564B', '#6B6B6B', '#FAF8F5']
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      {/* Confetti */}
+      <div className="confetti-container">
+        {Array.from({ length: 30 }).map((_, i) => (
+          <div
+            key={i}
+            className="confetti-piece"
+            style={{
+              left: `${Math.random() * 100}%`,
+              backgroundColor: confettiColors[i % confettiColors.length],
+              animationDelay: `${Math.random() * 0.8}s`,
+              animationDuration: `${1 + Math.random() * 1}s`,
+              transform: `rotate(${Math.random() * 360}deg)`,
+              width: `${6 + Math.random() * 6}px`,
+              height: `${6 + Math.random() * 6}px`,
+              borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+            }}
+          />
+        ))}
+      </div>
+
+      <div
+        className={`relative bg-white rounded-2xl shadow-xl p-8 mx-6 max-w-sm w-full text-center transition-all duration-500 ${
+          show ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-text-secondary hover:text-text transition-colors"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mx-auto mb-4 animate-scale-in">
+          <Trophy className="w-8 h-8 text-secondary" />
+        </div>
+
+        <h2 className="font-serif text-2xl font-bold text-text">
+          {milestone.label}!
+        </h2>
+        <p className="mt-3 text-text-secondary leading-relaxed">
+          You made it. {milestone.days === 1 ? 'The first day is always the hardest.' : `${milestone.label} of real progress.`} Be proud of yourself.
+        </p>
+
+        <button
+          onClick={onClose}
+          className="mt-6 w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+        >
+          Keep going
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Milestones() {
   const { profile, loading } = useProfile()
+  const [celebration, setCelebration] = useState(null)
 
   if (loading || !profile) {
     return (
@@ -36,56 +115,116 @@ export default function Milestones() {
   const quitDate = new Date(profile.quit_date)
   const now = Date.now()
   const elapsedDays = Math.floor((now - quitDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const nextMilestone = getNextMilestone(elapsedDays)
+  const progress = nextMilestone ? Math.min(100, Math.round((elapsedDays / nextMilestone.days) * 100)) : 100
 
   return (
     <div className="px-6 pt-8 pb-6">
-      <h1 className="font-serif text-2xl font-bold text-text mb-2">Milestones</h1>
-      <p className="text-text-secondary mb-8">Day {elapsedDays} of your journey</p>
+      <div className="animate-fade-in">
+        <h1 className="font-serif text-2xl font-bold text-text mb-2">Milestones</h1>
+        <p className="text-text-secondary">Day {elapsedDays} of your journey</p>
+      </div>
 
-      <div className="space-y-4">
-        {MILESTONES.map(({ days, label }) => {
+      {/* Next milestone progress */}
+      {nextMilestone && (
+        <div className="mt-6 p-5 rounded-xl bg-white border border-gray-100 shadow-sm opacity-0 animate-fade-in-up stagger-1">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
+              <Star className="w-4 h-4 text-secondary" />
+            </div>
+            <p className="font-medium text-text">
+              Next: <span className="text-secondary">{nextMilestone.label}</span>
+            </p>
+          </div>
+          <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-700"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-xs text-text-secondary mt-2">
+            {nextMilestone.days - elapsedDays} {nextMilestone.days - elapsedDays === 1 ? 'day' : 'days'} to go — {progress}% there
+          </p>
+        </div>
+      )}
+
+      {/* Milestone timeline */}
+      <div className="mt-6 space-y-3">
+        {MILESTONES.map(({ days, label }, i) => {
           const reached = elapsedDays >= days
+          const isNext = nextMilestone && days === nextMilestone.days
           const milestoneDate = addDays(quitDate, days - 1)
 
           return (
             <div
               key={days}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+              className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all opacity-0 animate-fade-in-up ${
                 reached
-                  ? 'border-primary/20 bg-primary/5'
-                  : 'border-gray-100 bg-white'
+                  ? 'border-primary/20 bg-primary/5 cursor-pointer hover:border-primary/30'
+                  : isNext
+                    ? 'border-secondary/30 bg-secondary/5'
+                    : 'border-gray-100 bg-white opacity-60'
               }`}
+              style={{ animationDelay: `${0.05 * i + 0.2}s` }}
+              onClick={reached ? () => setCelebration({ days, label }) : undefined}
             >
+              {/* Icon */}
               <div
-                className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                   reached
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 text-text-secondary'
+                    ? 'bg-primary text-white shadow-md shadow-primary/20'
+                    : isNext
+                      ? 'bg-secondary/20 text-secondary'
+                      : 'bg-gray-100 text-text-secondary'
                 }`}
               >
                 {reached ? (
                   <Check size={20} strokeWidth={2.5} />
+                ) : isNext ? (
+                  <Star size={16} />
                 ) : (
-                  <span className="text-sm font-medium">{days}</span>
+                  <span className="text-xs font-medium">{days}</span>
                 )}
               </div>
+
+              {/* Content */}
               <div className="flex-1 min-w-0">
-                <p className={`font-medium ${reached ? 'text-primary' : 'text-text'}`}>
+                <p className={`font-medium ${reached ? 'text-primary' : isNext ? 'text-secondary' : 'text-text'}`}>
                   {label}
                 </p>
                 <p className="text-sm text-text-secondary">
-                  {reached ? `Reached ${formatDate(milestoneDate)}` : formatDate(milestoneDate)}
+                  {reached
+                    ? `Reached ${formatDate(milestoneDate)}`
+                    : isNext
+                      ? `${nextMilestone.days - elapsedDays} days away`
+                      : formatDate(milestoneDate)
+                  }
                 </p>
               </div>
+
+              {/* Badge */}
               {reached && (
-                <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">
-                  Done
+                <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                  Earned
+                </span>
+              )}
+              {isNext && (
+                <span className="text-xs font-medium text-secondary bg-secondary/10 px-2.5 py-1 rounded-full">
+                  Next
                 </span>
               )}
             </div>
           )
         })}
       </div>
+
+      {/* Celebration overlay */}
+      {celebration && (
+        <CelebrationOverlay
+          milestone={celebration}
+          onClose={() => setCelebration(null)}
+        />
+      )}
     </div>
   )
 }

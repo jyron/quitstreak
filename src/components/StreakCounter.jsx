@@ -22,49 +22,109 @@ function getElapsed(quitDate) {
   }
 }
 
+function getStreakPhase(days) {
+  if (days <= 7) return 'seedling'
+  if (days <= 30) return 'growing'
+  if (days <= 90) return 'strong'
+  return 'mature'
+}
+
+const PHASE_STYLES = {
+  seedling: {
+    ring: 'border-primary/20',
+    glow: 'shadow-[0_0_30px_rgba(45,106,106,0.15)]',
+    bg: 'bg-primary/5',
+    accent: 'text-primary',
+  },
+  growing: {
+    ring: 'border-primary/40',
+    glow: 'shadow-[0_0_40px_rgba(45,106,106,0.25)]',
+    bg: 'bg-primary/8',
+    accent: 'text-primary',
+  },
+  strong: {
+    ring: 'border-secondary/50',
+    glow: 'shadow-[0_0_50px_rgba(212,160,83,0.3)]',
+    bg: 'bg-secondary/5',
+    accent: 'text-secondary',
+  },
+  mature: {
+    ring: 'border-secondary/70',
+    glow: 'shadow-[0_0_60px_rgba(212,160,83,0.4)]',
+    bg: 'bg-secondary/8',
+    accent: 'text-secondary',
+  },
+}
+
 export default function StreakCounter({ quitDate, quitType }) {
   const [elapsed, setElapsed] = useState(() => getElapsed(quitDate))
+  const [mounted, setMounted] = useState(false)
+  const [pulsing, setPulsing] = useState(false)
+  const prevDayRef = useRef(null)
   const quitDateRef = useRef(quitDate)
 
-  // Keep the ref current and immediately reflect any quitDate prop change
   useEffect(() => {
     quitDateRef.current = quitDate
     setElapsed(getElapsed(quitDate))
   }, [quitDate])
 
-  // Interval starts once on mount and never restarts due to re-renders.
-  // Reads quitDate via ref so it always uses the latest value.
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   useEffect(() => {
     const id = setInterval(() => {
-      setElapsed(getElapsed(quitDateRef.current))
+      const next = getElapsed(quitDateRef.current)
+      // Pulse when the day number changes
+      if (prevDayRef.current !== null && next.days !== prevDayRef.current) {
+        setPulsing(true)
+        setTimeout(() => setPulsing(false), 300)
+      }
+      prevDayRef.current = next.days
+      setElapsed(next)
     }, 1000)
     return () => clearInterval(id)
   }, [])
 
   const label = TYPE_LABELS[quitType] ?? 'free'
+  const dayCount = elapsed.days + 1
+  const phase = getStreakPhase(dayCount)
+  const styles = PHASE_STYLES[phase]
 
   return (
-    <div className="text-center py-12">
-      <p className="text-text-secondary text-sm uppercase tracking-widest mb-6">
+    <div className={`text-center py-12 ${mounted ? 'animate-scale-in' : 'opacity-0'}`}>
+      <p className="text-text-secondary text-sm uppercase tracking-widest mb-8">
         {label} for
       </p>
 
-      <div className="font-serif text-text">
-        <span className="text-xl mr-2 text-text-secondary">Day</span>
-        <span className="text-7xl font-bold leading-none">{elapsed.days + 1}</span>
+      {/* Evolving ring */}
+      <div className="relative inline-flex items-center justify-center">
+        <div
+          className={`absolute w-48 h-48 rounded-full border-4 ${styles.ring} ${styles.bg} ${styles.glow} animate-glow-pulse transition-all duration-1000`}
+        />
+        {phase === 'mature' && (
+          <div className="absolute w-56 h-56 rounded-full border-2 border-secondary/20 animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
+        )}
+
+        <div className="relative font-serif text-text z-10">
+          <span className="text-xl mr-2 text-text-secondary">Day</span>
+          <span className={`text-7xl font-bold leading-none transition-transform ${pulsing ? 'animate-count-pulse' : ''}`}>
+            {dayCount}
+          </span>
+        </div>
       </div>
 
-      <div className="flex justify-center gap-6 mt-6 font-serif text-2xl text-text">
+      <div className="flex justify-center gap-6 mt-8 font-serif text-2xl text-text">
         <div>
-          <span className="font-bold">{String(elapsed.hours).padStart(2, '0')}</span>
+          <span className="font-bold tabular-nums">{String(elapsed.hours).padStart(2, '0')}</span>
           <span className="text-sm text-text-secondary ml-1">hr</span>
         </div>
         <div>
-          <span className="font-bold">{String(elapsed.minutes).padStart(2, '0')}</span>
+          <span className="font-bold tabular-nums">{String(elapsed.minutes).padStart(2, '0')}</span>
           <span className="text-sm text-text-secondary ml-1">min</span>
         </div>
         <div>
-          <span className="font-bold">{String(elapsed.seconds).padStart(2, '0')}</span>
+          <span className="font-bold tabular-nums">{String(elapsed.seconds).padStart(2, '0')}</span>
           <span className="text-sm text-text-secondary ml-1">sec</span>
         </div>
       </div>

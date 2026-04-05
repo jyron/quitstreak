@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Wine, Cigarette, CloudFog, LinkIcon, Copy, Check } from 'lucide-react'
+import { Wine, Cigarette, CloudFog, LinkIcon, Copy, Check, AlertTriangle, Heart } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 
@@ -25,6 +25,10 @@ export default function Settings() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
+  const [showResetModal, setShowResetModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   async function handleSave() {
     setSaving(true)
@@ -46,6 +50,34 @@ export default function Settings() {
     }
   }
 
+  async function handleResetStreak() {
+    setResetting(true)
+    const { error } = await updateProfile({
+      quit_date: new Date().toISOString(),
+    })
+    setResetting(false)
+    if (!error) {
+      setQuitDate(formatDateForInput(new Date()))
+      setShowResetModal(false)
+      navigate('/app', { replace: true })
+    }
+  }
+
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    // Delete profile data first, then sign out
+    const { error: deleteError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', profile.id)
+
+    if (!deleteError) {
+      await supabase.auth.signOut()
+      navigate('/', { replace: true })
+    }
+    setDeleting(false)
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     navigate('/', { replace: true })
@@ -56,8 +88,12 @@ export default function Settings() {
     quitType !== (profile?.quit_type ?? '') ||
     quitDate !== (profile?.quit_date ? formatDateForInput(new Date(profile.quit_date)) : '')
 
+  const currentDays = profile?.quit_date
+    ? Math.floor((Date.now() - new Date(profile.quit_date).getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : 0
+
   return (
-    <div className="px-6 pt-8 pb-6">
+    <div className="px-6 pt-8 pb-6 animate-fade-in">
       <h1 className="font-serif text-2xl font-bold text-text mb-8">Settings</h1>
 
       <div className="space-y-6">
@@ -93,7 +129,7 @@ export default function Settings() {
               >
                 <Icon
                   size={24}
-                  className={quitType === value ? 'text-primary' : 'text-text-secondary'}
+                  className={`transition-colors ${quitType === value ? 'text-primary' : 'text-text-secondary'}`}
                 />
                 <span className={`font-medium ${quitType === value ? 'text-primary' : 'text-text'}`}>
                   {label}
@@ -132,15 +168,101 @@ export default function Settings() {
       {/* Share link */}
       <ShareSection profile={profile} />
 
-      {/* Sign out */}
-      <div className="mt-12 pt-6 border-t border-gray-100">
+      {/* Reset streak */}
+      <div className="mt-8 pt-6 border-t border-gray-100">
+        <button
+          onClick={() => setShowResetModal(true)}
+          className="w-full py-3 px-6 rounded-xl border border-danger/30 text-danger font-medium hover:bg-danger/5 transition-colors"
+        >
+          I need to reset my streak
+        </button>
+      </div>
+
+      {/* Sign out & Delete */}
+      <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
         <button
           onClick={handleSignOut}
           className="w-full py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
         >
           Sign out
         </button>
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="w-full py-3 px-6 rounded-xl text-text-secondary/60 text-sm font-medium hover:text-danger transition-colors"
+        >
+          Delete my account
+        </button>
       </div>
+
+      {/* Reset streak modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowResetModal(false)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 mx-6 max-w-sm w-full animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Heart className="w-6 h-6 text-primary" />
+            </div>
+            <h2 className="font-serif text-xl font-bold text-text text-center">
+              That's okay.
+            </h2>
+            <p className="mt-3 text-text-secondary text-center leading-relaxed">
+              Slipping doesn't erase what you've done. {currentDays} {currentDays === 1 ? 'day' : 'days'} of progress is still {currentDays} {currentDays === 1 ? 'day' : 'days'} your body healed. Ready to start again?
+            </p>
+            <div className="flex flex-col gap-3 mt-6">
+              <button
+                onClick={handleResetStreak}
+                disabled={resetting}
+                className="w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {resetting ? 'Resetting...' : 'Reset to today'}
+              </button>
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="w-full py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+              >
+                Actually, I'm still going
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete account modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 mx-6 max-w-sm w-full animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-6 h-6 text-danger" />
+            </div>
+            <h2 className="font-serif text-xl font-bold text-text text-center">
+              Delete your account?
+            </h2>
+            <p className="mt-3 text-text-secondary text-center leading-relaxed">
+              This will permanently delete all your data — your streak, check-ins, milestones, and partner links. This can't be undone.
+            </p>
+            <div className="flex flex-col gap-3 mt-6">
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="w-full py-3 px-6 rounded-xl bg-danger text-white font-medium hover:bg-danger/90 transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Yes, delete everything'}
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="w-full py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+              >
+                Keep my account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
