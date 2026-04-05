@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import StreakCounter from '../components/StreakCounter'
 import CheckinHistory from '../components/CheckinHistory'
@@ -16,6 +17,8 @@ export default function Dashboard() {
   const { profile, loading } = useProfile()
   const { checkins, loading: checkinsLoading, todayCheckin } = useCheckins()
   const navigate = useNavigate()
+
+  const quitDate = useMemo(() => new Date(profile?.quit_date), [profile?.quit_date])
 
   if (loading || !profile) {
     return (
@@ -41,7 +44,7 @@ export default function Dashboard() {
       </div>
 
       <StreakCounter
-        quitDate={new Date(profile.quit_date)}
+        quitDate={quitDate}
         quitType={profile.quit_type}
       />
 
