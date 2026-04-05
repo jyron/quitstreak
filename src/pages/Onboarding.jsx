@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Wine, Cigarette, CloudFog, Heart, Calendar } from 'lucide-react'
+import { Wine, Cigarette, CloudFog, Heart, Calendar, CalendarDays } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
@@ -239,58 +239,12 @@ export default function Onboarding() {
 
         {/* Step 2: When did you quit? */}
         {step === 2 && (
-          <div>
-            <h1 className="font-serif text-3xl font-bold text-text">When did you quit?</h1>
-            <p className="mt-2 text-text-secondary">Or when are you planning to quit?</p>
-            <div className="mt-8 flex flex-wrap gap-2">
-              {[
-                { label: 'Today', days: 0 },
-                { label: 'Yesterday', days: 1 },
-                { label: '1 week ago', days: 7 },
-                { label: '2 weeks ago', days: 14 },
-                { label: '1 month ago', days: 30 },
-              ].map(({ label, days }) => {
-                const d = new Date()
-                d.setDate(d.getDate() - days)
-                const val = formatDateForInput(d)
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => setQuitDate(val)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                      quitDate === val
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-text-secondary hover:bg-gray-200'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-            <input
-              type="date"
-              value={quitDate}
-              max={formatDateForInput(new Date())}
-              onChange={(e) => setQuitDate(e.target.value)}
-              className="mt-4 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-lg"
-            />
-            <div className="flex gap-3 mt-8">
-              <button
-                onClick={() => setStep(1)}
-                className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
-              >
-                Back
-              </button>
-              <button
-                onClick={() => setStep(3)}
-                className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
-              >
-                Continue
-              </button>
-            </div>
-          </div>
+          <Step2QuitDate
+            quitDate={quitDate}
+            setQuitDate={setQuitDate}
+            onBack={() => setStep(1)}
+            onContinue={() => setStep(3)}
+          />
         )}
 
         {/* Step 3: Confirmation */}
@@ -331,6 +285,85 @@ export default function Onboarding() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function Step2QuitDate({ quitDate, setQuitDate, onBack, onContinue }) {
+  const today = formatDateForInput(new Date())
+  const isToday = quitDate === today
+
+  // Max date for the picker is today
+  return (
+    <div>
+      <h1 className="font-serif text-3xl font-bold text-text">When did you quit?</h1>
+      <p className="mt-2 text-text-secondary">Pick the day your streak started.</p>
+
+      <div className="mt-8 flex flex-col gap-3">
+        {/* Today option */}
+        <button
+          type="button"
+          onClick={() => setQuitDate(today)}
+          className={`flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
+            isToday ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'
+          }`}
+        >
+          <Calendar size={24} className={isToday ? 'text-primary' : 'text-text-secondary'} />
+          <div>
+            <p className={`font-medium ${isToday ? 'text-primary' : 'text-text'}`}>Today</p>
+            <p className="text-sm text-text-secondary">My streak starts now</p>
+          </div>
+        </button>
+
+        {/* Past date option */}
+        <button
+          type="button"
+          onClick={() => {
+            if (isToday) {
+              // Default to yesterday so the date picker opens to a past date
+              const yesterday = new Date()
+              yesterday.setDate(yesterday.getDate() - 1)
+              setQuitDate(formatDateForInput(yesterday))
+            }
+          }}
+          className={`flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
+            !isToday ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'
+          }`}
+        >
+          <CalendarDays size={24} className={!isToday ? 'text-primary' : 'text-text-secondary'} />
+          <div>
+            <p className={`font-medium ${!isToday ? 'text-primary' : 'text-text'}`}>A date in the past</p>
+            <p className="text-sm text-text-secondary">I already quit — pick when</p>
+          </div>
+        </button>
+      </div>
+
+      {/* Date picker — only visible when "A date in the past" is selected */}
+      {!isToday && (
+        <input
+          type="date"
+          value={quitDate}
+          max={formatDateForInput(new Date())}
+          min="2020-01-01"
+          onChange={(e) => setQuitDate(e.target.value)}
+          className="mt-4 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-lg"
+        />
+      )}
+
+      <div className="flex gap-3 mt-8">
+        <button
+          onClick={onBack}
+          className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+        >
+          Back
+        </button>
+        <button
+          onClick={onContinue}
+          className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+        >
+          Continue
+        </button>
       </div>
     </div>
   )

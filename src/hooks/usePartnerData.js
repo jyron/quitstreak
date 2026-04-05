@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from './useAuth'
 
 const NUDGE_COOLDOWN_MS = 60_000
 
 export function usePartnerData(shareCode) {
+  const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [checkins, setCheckins] = useState([])
   const [loading, setLoading] = useState(true)
@@ -89,11 +91,25 @@ export function usePartnerData(shareCode) {
   const sendNudge = useCallback(async () => {
     if (!profile || nudgeCooldown) return { error: 'Please wait before sending another.' }
 
+    // Look up the sender's display name if they're signed in
+    let senderName = null
+    if (user) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (data?.display_name && data.display_name !== 'Someone brave' && data.display_name !== 'A supporter') {
+        senderName = data.display_name
+      }
+    }
+
     const { error } = await supabase
       .from('nudges')
       .insert({
         user_id: profile.id,
         share_code: shareCode,
+        sender_name: senderName,
       })
 
     if (error) {

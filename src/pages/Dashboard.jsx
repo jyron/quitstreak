@@ -97,7 +97,11 @@ export default function Dashboard() {
         <div className="mt-4 bg-secondary/10 border border-secondary/20 rounded-xl px-5 py-4 flex items-start gap-3">
           <Heart className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="font-medium text-text">Someone is cheering you on!</p>
+            <p className="font-medium text-text">
+              {nudges[0].sender_name
+                ? `${nudges[0].sender_name} is cheering you on!`
+                : 'Someone is cheering you on!'}
+            </p>
             <p className="text-sm text-text-secondary mt-0.5">They'd love to see a check-in today.</p>
           </div>
           <button
