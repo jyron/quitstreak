@@ -4,6 +4,7 @@ import { Heart, Send } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
 import CheckinHistory from '../components/CheckinHistory'
 import { usePartnerData } from '../hooks/usePartnerData'
+import { useAuth } from '../hooks/useAuth'
 
 const TYPE_LABELS = {
   drinking: 'alcohol',
@@ -13,6 +14,7 @@ const TYPE_LABELS = {
 
 export default function PartnerDashboard() {
   const { shareCode } = useParams()
+  const { user } = useAuth()
   const { profile, checkins, loading, error, sendNudge, nudgeSent, nudgeCooldown } = usePartnerData(shareCode)
   const [nudgeError, setNudgeError] = useState(null)
   const [sending, setSending] = useState(false)
@@ -59,21 +61,23 @@ export default function PartnerDashboard() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-6 pt-8 pb-24">
-        {/* Sign-in banner for supporters who don't have an account */}
-        <div className="bg-primary/5 border border-primary/10 rounded-xl px-5 py-4 mb-6">
-          <p className="font-serif text-lg font-semibold text-text">
-            {displayName} is sharing their journey with you
-          </p>
-          <p className="mt-1 text-sm text-text-secondary">
-            Sign in to send encouragement whenever you want — they'll see it immediately.
-          </p>
-          <Link
-            to={`/?ref=${shareCode}`}
-            className="mt-3 inline-block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
-          >
-            Sign in to support {displayName} &rarr;
-          </Link>
-        </div>
+        {/* Sign-in banner — only shown to unauthenticated visitors */}
+        {!user && (
+          <div className="bg-primary/5 border border-primary/10 rounded-xl px-5 py-4 mb-6">
+            <p className="font-serif text-lg font-semibold text-text">
+              {displayName} is sharing their journey with you
+            </p>
+            <p className="mt-1 text-sm text-text-secondary">
+              Sign in to send encouragement whenever you want — they'll see it immediately.
+            </p>
+            <Link
+              to={`/?ref=${shareCode}`}
+              className="mt-3 inline-block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              Sign in to support {displayName} &rarr;
+            </Link>
+          </div>
+        )}
 
         {/* Journey header */}
         <div className="text-center mb-2">

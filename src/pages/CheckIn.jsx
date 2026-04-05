@@ -8,10 +8,11 @@ import CravingScale from '../components/CravingScale'
 function getConfirmationMessage(quitDate) {
   if (!quitDate) return "You're doing great."
   const days = Math.max(0, Math.floor((Date.now() - new Date(quitDate).getTime()) / (1000 * 60 * 60 * 24)))
-  if (days === 7) return "One week. That's real."
-  if (days === 14) return "Two weeks. You're building something."
-  if (days < 7) return `Day ${days}. Every day counts.`
-  if (days >= 30) return `Day ${days}. Look how far you've come.`
+  const day = days + 1 // Day 1 on the first day, consistent with the streak counter
+  if (day === 7) return "One week. That's real."
+  if (day === 14) return "Two weeks. You're building something."
+  if (day <= 7) return `Day ${day}. Every day counts.`
+  if (day >= 30) return `Day ${day}. Look how far you've come.`
   return "You're doing great."
 }
 
@@ -33,21 +34,16 @@ export default function CheckIn() {
     return () => clearTimeout(timer)
   }, [step, navigate])
 
-  async function handleSubmit() {
+  async function handleSubmit(noteOverride) {
     setSubmitting(true)
     setError(null)
-    const { error } = await submitCheckin({ mood, craving, note })
+    const { error } = await submitCheckin({ mood, craving, note: noteOverride !== undefined ? noteOverride : note })
     setSubmitting(false)
     if (error) {
       setError(typeof error === 'string' ? error : error.message)
     } else {
       setStep('done')
     }
-  }
-
-  function handleSkip() {
-    setNote('')
-    handleSubmit()
   }
 
   return (
@@ -134,18 +130,11 @@ export default function CheckIn() {
                 Back
               </button>
               <button
-                onClick={handleSkip}
-                disabled={submitting}
-                className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Skip
-              </button>
-              <button
-                onClick={handleSubmit}
+                onClick={() => handleSubmit()}
                 disabled={submitting}
                 className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {submitting ? 'Saving...' : 'Submit'}
+                {submitting ? 'Saving...' : 'Log it'}
               </button>
             </div>
           </div>
