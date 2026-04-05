@@ -100,10 +100,10 @@ export default function StreakCounter({ quitDate, quitType }) {
       {/* Evolving ring */}
       <div className="relative inline-flex items-center justify-center">
         <div
-          className={`absolute w-48 h-48 rounded-full border-4 ${styles.ring} ${styles.bg} ${styles.glow} animate-glow-pulse transition-all duration-1000`}
+          className={`absolute w-64 h-64 rounded-full border-4 ${styles.ring} ${styles.bg} ${styles.glow} animate-glow-pulse transition-all duration-1000`}
         />
         {phase === 'mature' && (
-          <div className="absolute w-56 h-56 rounded-full border-2 border-secondary/20 animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute w-72 h-72 rounded-full border-2 border-secondary/20 animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
         )}
 
         <div className="relative font-serif text-text z-10">
