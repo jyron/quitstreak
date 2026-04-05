@@ -7,6 +7,7 @@ import FaceIcon from '../components/FaceIcon'
 import { useProfile } from '../hooks/useProfile'
 import { useCheckins } from '../hooks/useCheckins'
 import { useNudges } from '../hooks/useNudges'
+import { useSupportedPeople } from '../hooks/useSupportedPeople'
 import { getMood, getCravingLevel } from '../lib/checkinData'
 
 const TYPE_LABELS = {
@@ -37,38 +38,95 @@ function getNextMilestone(dayCount) {
   return null
 }
 
+function getDayCount(quitDate) {
+  return Math.floor((Date.now() - new Date(quitDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+}
+
 function SupporterHome({ profile }) {
+  const { people, loading } = useSupportedPeople()
   const lastPartner = localStorage.getItem('pendingShareCode')
 
+  const hasName = profile.display_name !== 'A supporter' && profile.display_name !== 'Someone brave'
+
   return (
-    <div className="px-6 pt-12 pb-6 flex flex-col items-center text-center animate-fade-in">
+    <div className="px-6 pt-12 pb-6 flex flex-col items-center animate-fade-in">
       <Heart className="w-12 h-12 text-primary/30 mb-4" />
-      <h1 className="font-serif text-2xl font-bold text-text">
-        {profile.display_name !== 'A supporter' && profile.display_name !== 'Someone brave'
-          ? `Welcome, ${profile.display_name}`
-          : 'You\'re a supporter'}
+      <h1 className="font-serif text-2xl font-bold text-text text-center">
+        {hasName ? `Welcome, ${profile.display_name}` : "You're a supporter"}
       </h1>
-      <p className="mt-3 text-text-secondary leading-relaxed max-w-sm">
-        You're here to support someone on their journey. You don't have a quitting streak of your own yet.
+      <p className="mt-3 text-text-secondary leading-relaxed max-w-sm text-center">
+        You're here to support someone on their journey.
       </p>
 
-      {lastPartner && (
-        <Link
-          to={`/partner/${lastPartner}`}
-          className="mt-8 w-full max-w-sm py-4 px-5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-        >
-          View their journey
-          <ArrowRight className="w-4 h-4" />
-        </Link>
-      )}
+      <div className="mt-8 w-full max-w-sm flex flex-col gap-3">
+        {loading ? (
+          <div className="text-center text-text-secondary py-4">Loading...</div>
+        ) : people.length > 0 ? (
+          <>
+            <p className="text-xs font-medium text-text-secondary uppercase tracking-wider px-1">
+              People you support
+            </p>
+            {people.map(person => {
+              const displayName = person.display_name !== 'Someone brave' ? person.display_name : 'Someone'
+              const dayCount = person.quit_date ? getDayCount(person.quit_date) : null
 
-      <Link
-        to="/app/onboarding"
-        className="mt-4 w-full max-w-sm py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-primary/20 hover:shadow-md transition-all"
-      >
-        <p className="font-medium text-text">Start your own journey</p>
-        <p className="text-sm text-text-secondary mt-0.5">Track your own streak and check-ins</p>
-      </Link>
+              if (!person.share_active) {
+                return (
+                  <div
+                    key={person.share_code}
+                    className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 opacity-50"
+                  >
+                    <p className="font-medium text-text">{displayName}'s Journey</p>
+                    <p className="text-sm text-text-secondary mt-0.5">Sharing paused</p>
+                  </div>
+                )
+              }
+
+              return (
+                <Link
+                  key={person.share_code}
+                  to={`/partner/${person.share_code}`}
+                  className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm hover:border-primary/20 hover:shadow-md transition-all flex items-center justify-between"
+                >
+                  <div>
+                    <p className="font-medium text-text">{displayName}'s Journey</p>
+                    <p className="text-sm text-text-secondary mt-0.5">
+                      Quitting {TYPE_LABELS[person.quit_type] || person.quit_type}
+                      {dayCount !== null && <> · Day {dayCount}</>}
+                    </p>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-text-secondary flex-shrink-0" />
+                </Link>
+              )
+            })}
+          </>
+        ) : (
+          <>
+            {lastPartner && (
+              <Link
+                to={`/partner/${lastPartner}`}
+                className="w-full py-4 px-5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+              >
+                View their journey
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            )}
+            {!lastPartner && (
+              <p className="text-sm text-text-secondary text-center py-2">
+                Visit someone's share link to start supporting them.
+              </p>
+            )}
+          </>
+        )}
+
+        <Link
+          to="/app/onboarding"
+          className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-primary/20 hover:shadow-md transition-all"
+        >
+          <p className="font-medium text-text">Start your own journey</p>
+          <p className="text-sm text-text-secondary mt-0.5">Track your own streak and check-ins</p>
+        </Link>
+      </div>
     </div>
   )
 }
