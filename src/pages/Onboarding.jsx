@@ -29,11 +29,11 @@ export default function Onboarding() {
     setSaving(true)
     setError(null)
 
-    const { data, error } = await supabase.from('profiles').insert({
+    const { data, error } = await supabase.from('profiles').upsert({
       id: user.id,
       quit_type: quitType,
       quit_date: new Date(quitDate + 'T00:00:00').toISOString(),
-    }).select().single()
+    }, { onConflict: 'id' }).select().single()
 
     setSaving(false)
 

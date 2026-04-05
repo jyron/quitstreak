@@ -39,7 +39,7 @@ export function ProfileProvider({ children }) {
 
     fetchProfile()
     return () => { cancelled = true }
-  }, [user])
+  }, [user?.id])
 
   async function updateProfile(updates) {
     if (!user) return { error: 'Not authenticated' }
