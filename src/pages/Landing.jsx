@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
@@ -44,8 +44,7 @@ const testimonials = [
 const freeFeatures = [
   'Streak tracking with live counter',
   'Daily mood & craving check-ins',
-  'Milestone achievements & health facts',
-  'Money saved & consumption stats',
+  'Milestone achievements',
   'Push notification reminders',
 ]
 
@@ -57,6 +56,20 @@ const plusFeatures = [
   'Priority support',
 ]
 
+function useInView(ref) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    if (!ref.current) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
+      { threshold: 0.15 }
+    )
+    observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [ref])
+  return visible
+}
+
 export default function Landing() {
   const { user, loading } = useAuth()
   const [searchParams] = useSearchParams()
@@ -66,7 +79,15 @@ export default function Landing() {
   const [error, setError] = useState(null)
   const [sending, setSending] = useState(false)
 
-  // Store the ref in localStorage so we can restore it after the magic link redirect
+  const howRef = useRef(null)
+  const partnerRef = useRef(null)
+  const testimonialsRef = useRef(null)
+  const pricingRef = useRef(null)
+  const howVisible = useInView(howRef)
+  const partnerVisible = useInView(partnerRef)
+  const testimonialsVisible = useInView(testimonialsRef)
+  const pricingVisible = useInView(pricingRef)
+
   useEffect(() => {
     if (ref) {
       localStorage.setItem('pendingShareCode', ref)
@@ -81,7 +102,6 @@ export default function Landing() {
     )
   }
 
-  // Already logged in: if they came from a partner link, send them there
   if (user) {
     if (ref) {
       return <Navigate to={`/partner/${ref}`} replace />
@@ -122,20 +142,20 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-6 pt-20 pb-12">
         {/* Hero */}
-        <div className="max-w-lg">
+        <div className="max-w-lg animate-fade-in">
           <h1 className="font-serif text-4xl font-bold text-text leading-tight">
             Quit drinking. Quit smoking. Quit vaping.
           </h1>
-          <p className="mt-2 font-serif text-xl text-primary font-semibold">
+          <p className="mt-2 font-serif text-xl text-primary font-semibold opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>
             And prove it to someone who cares.
           </p>
-          <p className="mt-4 text-text-secondary leading-relaxed">
+          <p className="mt-4 text-text-secondary leading-relaxed opacity-0 animate-fade-in" style={{ animationDelay: '0.3s' }}>
             Track your streak, log your journey, and share a live dashboard with the person rooting for you hardest.
           </p>
         </div>
 
         {/* Sign in form */}
-        <div className="mt-10 max-w-lg">
+        <div className="mt-10 max-w-lg opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
           {ref && (
             <div className="mb-4 bg-primary/5 border border-primary/10 rounded-xl px-4 py-3">
               <p className="text-sm text-primary font-medium">
@@ -147,7 +167,7 @@ export default function Landing() {
             </div>
           )}
           {submitted ? (
-            <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="bg-white rounded-xl p-6 shadow-sm animate-scale-in">
               <p className="font-serif text-xl font-semibold text-primary">Check your email</p>
               <p className="mt-2 text-text-secondary">
                 We sent a magic link to <span className="font-medium text-text">{email}</span>. Click it to sign in.
@@ -185,11 +205,15 @@ export default function Landing() {
         </div>
 
         {/* How It Works */}
-        <section className="mt-24">
+        <section ref={howRef} className={`mt-24 transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <h2 className="font-serif text-2xl font-bold text-text">How it works</h2>
           <div className="mt-8 space-y-6">
             {steps.map((step, i) => (
-              <div key={i} className="flex gap-5 items-start">
+              <div
+                key={i}
+                className="flex gap-5 items-start transition-all duration-500"
+                style={{ transitionDelay: howVisible ? `${i * 100}ms` : '0ms' }}
+              >
                 <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                   <step.icon className="w-5 h-5 text-primary" />
                 </div>
@@ -209,14 +233,14 @@ export default function Landing() {
         </section>
 
         {/* Partner View Preview */}
-        <section className="mt-24">
+        <section ref={partnerRef} className={`mt-24 transition-all duration-700 ${partnerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             Your mom. Your partner. Your best friend. Your sponsor.
           </h2>
           <p className="mt-2 text-text-secondary text-center">
             Give them peace of mind.
           </p>
-          <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className={`mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-1000 ${partnerVisible ? 'animate-float' : ''}`}>
             {/* Mock partner dashboard */}
             <div className="bg-primary/5 px-6 py-4 border-b border-gray-100">
               <p className="text-sm text-text-secondary">Partner Dashboard</p>
@@ -271,13 +295,17 @@ export default function Landing() {
         </section>
 
         {/* Social Proof */}
-        <section className="mt-24">
+        <section ref={testimonialsRef} className={`mt-24 transition-all duration-700 ${testimonialsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             People are quitting for good
           </h2>
           <div className="mt-8 space-y-4">
             {testimonials.map((t, i) => (
-              <div key={i} className="bg-white rounded-xl p-5 shadow-sm">
+              <div
+                key={i}
+                className="bg-white rounded-xl p-5 shadow-sm transition-all duration-500"
+                style={{ transitionDelay: testimonialsVisible ? `${i * 150}ms` : '0ms' }}
+              >
                 <p className="text-text leading-relaxed">"{t.quote}"</p>
                 <p className="mt-3 text-sm text-text-secondary">
                   — {t.name}, {t.context}
@@ -288,7 +316,7 @@ export default function Landing() {
         </section>
 
         {/* Pricing */}
-        <section className="mt-24">
+        <section ref={pricingRef} className={`mt-24 transition-all duration-700 ${pricingVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             Simple pricing
           </h2>
@@ -297,7 +325,7 @@ export default function Landing() {
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {/* Free tier */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
               <h3 className="font-serif text-lg font-semibold text-text">Free</h3>
               <p className="mt-1 text-text-secondary text-sm">Everything you need to track your streak.</p>
               <p className="mt-4 font-serif text-3xl font-bold text-text">$0</p>
@@ -317,7 +345,7 @@ export default function Landing() {
               </button>
             </div>
             {/* Plus tier */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-primary relative">
+            <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-primary relative hover:shadow-md hover:-translate-y-1 transition-all duration-300">
               <div className="absolute -top-3 left-6 bg-secondary text-white text-xs font-medium px-3 py-1 rounded-full">
                 Save 44% annually
               </div>
