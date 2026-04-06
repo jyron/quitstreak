@@ -31,25 +31,21 @@ function getStreakPhase(days) {
 
 const PHASE_STYLES = {
   seedling: {
-    ring: 'border-primary/20',
     glow: 'shadow-[0_0_30px_rgba(45,106,106,0.15)]',
     bg: 'bg-primary/5',
     accent: 'text-primary',
   },
   growing: {
-    ring: 'border-primary/40',
     glow: 'shadow-[0_0_40px_rgba(45,106,106,0.25)]',
     bg: 'bg-primary/8',
     accent: 'text-primary',
   },
   strong: {
-    ring: 'border-secondary/50',
     glow: 'shadow-[0_0_50px_rgba(212,160,83,0.3)]',
     bg: 'bg-secondary/5',
     accent: 'text-secondary',
   },
   mature: {
-    ring: 'border-secondary/70',
     glow: 'shadow-[0_0_60px_rgba(212,160,83,0.4)]',
     bg: 'bg-secondary/8',
     accent: 'text-secondary',
@@ -100,10 +96,10 @@ export default function StreakCounter({ quitDate, quitType }) {
       {/* Evolving ring */}
       <div className="relative inline-flex items-center justify-center">
         <div
-          className={`absolute w-64 h-64 rounded-full border-4 ${styles.ring} ${styles.bg} ${styles.glow} animate-glow-pulse transition-all duration-1000`}
+          className={`absolute w-64 h-64 rounded-full ${styles.bg} ${styles.glow} animate-glow-pulse transition-all duration-1000`}
         />
         {phase === 'mature' && (
-          <div className="absolute w-72 h-72 rounded-full border-2 border-secondary/20 animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute w-72 h-72 rounded-full animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
         )}
 
         <div className="relative font-serif text-text z-10">
