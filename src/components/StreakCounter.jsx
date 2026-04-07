@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 
 const TYPE_LABELS = {
   drinking: 'alcohol-free',
@@ -33,54 +33,49 @@ const PHASE_STYLES = {
   seedling: {
     glow: 'shadow-[0_0_30px_rgba(45,106,106,0.15)]',
     bg: 'bg-primary/5',
-    accent: 'text-primary',
   },
   growing: {
     glow: 'shadow-[0_0_40px_rgba(45,106,106,0.25)]',
     bg: 'bg-primary/8',
-    accent: 'text-primary',
   },
   strong: {
     glow: 'shadow-[0_0_50px_rgba(212,160,83,0.3)]',
     bg: 'bg-secondary/5',
-    accent: 'text-secondary',
   },
   mature: {
     glow: 'shadow-[0_0_60px_rgba(212,160,83,0.4)]',
     bg: 'bg-secondary/8',
-    accent: 'text-secondary',
   },
 }
 
 export default function StreakCounter({ quitDate, quitType }) {
-  const [elapsed, setElapsed] = useState(() => getElapsed(quitDate))
+  const [elapsed, setElapsed] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [mounted, setMounted] = useState(false)
   const [pulsing, setPulsing] = useState(false)
-  const prevDayRef = useRef(null)
-  const quitDateRef = useRef(quitDate)
-
-  useEffect(() => {
-    quitDateRef.current = quitDate
-    setElapsed(getElapsed(quitDate))
-  }, [quitDate])
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
   useEffect(() => {
+    if (!quitDate || isNaN(quitDate.getTime())) return
+
+    setElapsed(getElapsed(quitDate))
+
+    let prevDays = getElapsed(quitDate).days
+
     const id = setInterval(() => {
-      const next = getElapsed(quitDateRef.current)
-      // Pulse when the day number changes
-      if (prevDayRef.current !== null && next.days !== prevDayRef.current) {
+      const next = getElapsed(quitDate)
+      if (next.days !== prevDays) {
         setPulsing(true)
         setTimeout(() => setPulsing(false), 300)
       }
-      prevDayRef.current = next.days
+      prevDays = next.days
       setElapsed(next)
     }, 1000)
+
     return () => clearInterval(id)
-  }, [])
+  }, [quitDate])
 
   const label = TYPE_LABELS[quitType] ?? 'free'
   const dayCount = elapsed.days + 1
@@ -89,10 +84,6 @@ export default function StreakCounter({ quitDate, quitType }) {
 
   return (
     <div className={`text-center py-10 ${mounted ? 'animate-scale-in' : 'opacity-0'}`}>
-      <p className="text-text-secondary text-xs uppercase tracking-[0.2em] mb-6 font-medium">
-        {label} for
-      </p>
-
       {/* Evolving ring */}
       <div className="relative inline-flex items-center justify-center">
         <div
@@ -103,10 +94,12 @@ export default function StreakCounter({ quitDate, quitType }) {
         )}
 
         <div className="relative font-serif text-text z-10">
-          <span className="text-lg mr-2 text-text-secondary font-medium">Day</span>
-          <span className={`text-7xl font-bold leading-none transition-transform ${pulsing ? 'animate-count-pulse' : ''}`}>
+          <span className={`text-8xl font-bold leading-none transition-transform ${pulsing ? 'animate-count-pulse' : ''}`}>
             {dayCount}
           </span>
+          <p className="text-lg text-text-secondary font-medium mt-2">
+            {dayCount === 1 ? 'day' : 'days'} {label}
+          </p>
         </div>
       </div>
 

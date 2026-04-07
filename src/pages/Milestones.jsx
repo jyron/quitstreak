@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Check, Trophy, X, Star } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
+import Confetti from '../components/Confetti'
 
 const MILESTONES = [
   { days: 1, label: '1 Day' },
@@ -41,29 +42,9 @@ function CelebrationOverlay({ milestone, onClose }) {
     requestAnimationFrame(() => setShow(true))
   }, [])
 
-  const confettiColors = ['#2D6A6A', '#D4A053', '#C0564B', '#6B6B6B', '#FAF8F5']
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      {/* Confetti */}
-      <div className="confetti-container">
-        {Array.from({ length: 30 }).map((_, i) => (
-          <div
-            key={i}
-            className="confetti-piece"
-            style={{
-              left: `${Math.random() * 100}%`,
-              backgroundColor: confettiColors[i % confettiColors.length],
-              animationDelay: `${Math.random() * 0.8}s`,
-              animationDuration: `${1 + Math.random() * 1}s`,
-              transform: `rotate(${Math.random() * 360}deg)`,
-              width: `${6 + Math.random() * 6}px`,
-              height: `${6 + Math.random() * 6}px`,
-              borderRadius: Math.random() > 0.5 ? '50%' : '2px',
-            }}
-          />
-        ))}
-      </div>
+      <Confetti />
 
       <div
         className={`relative bg-white rounded-2xl shadow-xl p-8 mx-6 max-w-sm w-full text-center transition-all duration-500 ${
