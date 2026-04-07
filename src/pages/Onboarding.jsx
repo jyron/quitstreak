@@ -12,7 +12,10 @@ const QUIT_TYPES = [
 ]
 
 function formatDateForInput(date) {
-  return date.toISOString().split('T')[0]
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 function OnboardingIllustration({ step, quitType }) {
@@ -142,12 +145,17 @@ export default function Onboarding() {
     setSaving(true)
     setError(null)
 
+    const today = formatDateForInput(new Date())
+    const quitTimestamp = quitDate === today
+      ? new Date().toISOString()
+      : new Date(quitDate + 'T00:00:00').toISOString()
+
     const { data, error } = await supabase.from('profiles').upsert({
       id: user.id,
       account_type: 'addict',
       display_name: displayName.trim() || null,
       quit_type: quitType,
-      quit_date: new Date(quitDate + 'T00:00:00').toISOString(),
+      quit_date: quitTimestamp,
     }, { onConflict: 'id' }).select().single()
 
     setSaving(false)

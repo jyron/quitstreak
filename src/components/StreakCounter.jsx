@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 
 const TYPE_LABELS = {
   drinking: 'alcohol-free',
@@ -48,7 +48,12 @@ const PHASE_STYLES = {
   },
 }
 
-export default function StreakCounter({ quitDate, quitType }) {
+export default function StreakCounter({ quitDate: quitDateStr, quitType }) {
+  const quitDate = useMemo(() => {
+    const d = new Date(quitDateStr)
+    return isNaN(d.getTime()) ? null : d
+  }, [quitDateStr])
+
   const [elapsed, setElapsed] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
   const [mounted, setMounted] = useState(false)
   const [pulsing, setPulsing] = useState(false)
@@ -58,7 +63,7 @@ export default function StreakCounter({ quitDate, quitType }) {
   }, [])
 
   useEffect(() => {
-    if (!quitDate || isNaN(quitDate.getTime())) return
+    if (!quitDate) return
 
     setElapsed(getElapsed(quitDate))
 
