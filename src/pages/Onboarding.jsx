@@ -373,12 +373,11 @@ export default function Onboarding() {
               <OnboardingIllustration step={4} />
               <h1 className="font-serif text-3xl font-bold text-text animate-fade-in">Locked in.</h1>
               <div className="mt-10 opacity-0 animate-scale-in" style={{ animationDelay: '0.2s' }}>
-                <p className="text-text-secondary text-xs uppercase tracking-[0.2em] mb-4 font-medium">
-                  {freeLabel} for
-                </p>
-                <p className="text-lg text-text-secondary mb-2 font-medium">Day</p>
                 <p className="font-serif text-8xl font-bold text-text">
                   {daysIn + 1}
+                </p>
+                <p className="text-lg text-text-secondary font-medium mt-2">
+                  {daysIn + 1 === 1 ? 'day' : 'days'} {freeLabel}
                 </p>
               </div>
               {ref && (
