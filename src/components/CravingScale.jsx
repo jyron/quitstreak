@@ -8,7 +8,7 @@ const HEIGHTS = ['20%', '40%', '60%', '80%', '100%']
 
 export default function CravingScale({ value, onChange }) {
   return (
-    <div className="flex gap-3 justify-center">
+    <div className="flex gap-2 justify-center">
       {CRAVING_LEVELS.map((level, i) => {
         const selected = value === level.value
         const color = COLORS[i]
@@ -17,13 +17,13 @@ export default function CravingScale({ value, onChange }) {
           <button
             key={level.value}
             onClick={() => onChange(level.value)}
-            className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all min-w-[60px] ${
-              selected ? 'border-current' : 'border-gray-100 bg-white hover:border-gray-200'
+            className={`flex-1 flex flex-col items-center gap-2.5 py-4 px-2 rounded-xl border-2 transition-all active:scale-95 ${
+              selected ? 'border-current shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'
             }`}
             style={selected ? { borderColor: color, backgroundColor: `${color}12` } : {}}
           >
             {/* Rising bar indicator */}
-            <div className="w-8 h-8 rounded-md bg-gray-100 overflow-hidden flex items-end">
+            <div className="w-9 h-9 rounded-lg bg-gray-100 overflow-hidden flex items-end">
               <div
                 className="w-full rounded-sm transition-all"
                 style={{
@@ -34,7 +34,7 @@ export default function CravingScale({ value, onChange }) {
               />
             </div>
             <span
-              className="text-xs font-medium transition-colors"
+              className="text-[11px] font-medium transition-colors leading-tight"
               style={selected ? { color } : { color: '#6B6B6B' }}
             >
               {level.label}

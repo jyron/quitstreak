@@ -73,7 +73,7 @@ function CelebrationOverlay({ milestone, onClose }) {
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-text-secondary hover:text-text transition-colors"
+          className="absolute top-4 right-4 text-text-secondary hover:text-text transition-colors p-1"
         >
           <X size={20} />
         </button>
@@ -91,7 +91,7 @@ function CelebrationOverlay({ milestone, onClose }) {
 
         <button
           onClick={onClose}
-          className="mt-6 w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+          className="mt-6 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors active:scale-[0.98]"
         >
           Keep going
         </button>
@@ -107,7 +107,7 @@ export default function Milestones() {
   if (loading || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-text-secondary">Loading...</div>
+        <div className="loading-spinner" />
       </div>
     )
   }
@@ -118,10 +118,14 @@ export default function Milestones() {
   const nextMilestone = getNextMilestone(elapsedDays)
   const progress = nextMilestone ? Math.min(100, Math.round((elapsedDays / nextMilestone.days) * 100)) : 100
 
+  // Find first reached milestone index for the "tap to celebrate" hint
+  const firstReachedIndex = MILESTONES.findIndex(m => elapsedDays >= m.days)
+  const hasReachedAny = firstReachedIndex >= 0
+
   return (
     <div className="px-6 pt-8 pb-6">
       <div className="animate-fade-in">
-        <h1 className="font-serif text-2xl font-bold text-text mb-2">Milestones</h1>
+        <h1 className="font-serif text-2xl font-bold text-text mb-1">Milestones</h1>
         <p className="text-text-secondary">Day {elapsedDays} of your journey</p>
       </div>
 
@@ -149,73 +153,79 @@ export default function Milestones() {
       )}
 
       {/* Milestone timeline */}
-      <div className="mt-6 space-y-3">
-        {MILESTONES.map(({ days, label }, i) => {
-          const reached = elapsedDays >= days
-          const isNext = nextMilestone && days === nextMilestone.days
-          const milestoneDate = addDays(quitDate, days - 1)
+      <div className="mt-6 relative">
+        {/* Vertical connector line */}
+        <div className="absolute left-[27px] top-4 bottom-4 w-px bg-gray-100" />
 
-          return (
-            <div
-              key={days}
-              className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all opacity-0 animate-fade-in-up ${
-                reached
-                  ? 'border-primary/20 bg-primary/5 cursor-pointer hover:border-primary/30'
-                  : isNext
-                    ? 'border-secondary/30 bg-secondary/5'
-                    : 'border-gray-100 bg-white opacity-60'
-              }`}
-              style={{ animationDelay: `${0.05 * i + 0.2}s` }}
-              onClick={reached ? () => setCelebration({ days, label }) : undefined}
-            >
-              {/* Icon */}
+        <div className="space-y-2.5">
+          {MILESTONES.map(({ days, label }, i) => {
+            const reached = elapsedDays >= days
+            const isNext = nextMilestone && days === nextMilestone.days
+            const milestoneDate = addDays(quitDate, days - 1)
+            const isFirstReached = hasReachedAny && i === firstReachedIndex
+
+            return (
               <div
-                className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                key={days}
+                className={`relative flex items-center gap-4 p-4 rounded-xl border-2 transition-all opacity-0 animate-fade-in-up ${
                   reached
-                    ? 'bg-primary text-white shadow-md shadow-primary/20'
+                    ? 'border-primary/20 bg-primary/5 cursor-pointer hover:border-primary/30 active:scale-[0.99]'
                     : isNext
-                      ? 'bg-secondary/20 text-secondary'
-                      : 'bg-gray-100 text-text-secondary'
-                }`}
+                      ? 'border-secondary/30 bg-secondary/5'
+                      : 'border-gray-100 bg-white'
+                } ${!reached && !isNext ? 'opacity-70' : ''}`}
+                style={{ animationDelay: `${0.05 * i + 0.2}s` }}
+                onClick={reached ? () => setCelebration({ days, label }) : undefined}
               >
-                {reached ? (
-                  <Check size={20} strokeWidth={2.5} />
-                ) : isNext ? (
-                  <Star size={16} />
-                ) : (
-                  <span className="text-xs font-medium">{days}</span>
+                {/* Icon */}
+                <div
+                  className={`relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    reached
+                      ? 'bg-primary text-white shadow-md shadow-primary/20'
+                      : isNext
+                        ? 'bg-secondary/20 text-secondary'
+                        : 'bg-gray-100 text-text-secondary'
+                  }`}
+                >
+                  {reached ? (
+                    <Check size={20} strokeWidth={2.5} />
+                  ) : isNext ? (
+                    <Star size={16} />
+                  ) : (
+                    <span className="text-xs font-medium">{days}</span>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <p className={`font-medium ${reached ? 'text-primary' : isNext ? 'text-secondary' : 'text-text'}`}>
+                    {label}
+                  </p>
+                  <p className={`text-sm ${reached || isNext ? 'text-text-secondary' : 'text-text-secondary/70'}`}>
+                    {reached
+                      ? `Reached ${formatDate(milestoneDate)}`
+                      : isNext
+                        ? `${nextMilestone.days - elapsedDays} days away`
+                        : formatDate(milestoneDate)
+                    }
+                  </p>
+                </div>
+
+                {/* Badge */}
+                {reached && (
+                  <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                    {isFirstReached ? 'Tap to celebrate' : 'Earned'}
+                  </span>
+                )}
+                {isNext && (
+                  <span className="text-xs font-medium text-secondary bg-secondary/10 px-2.5 py-1 rounded-full">
+                    Next
+                  </span>
                 )}
               </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0">
-                <p className={`font-medium ${reached ? 'text-primary' : isNext ? 'text-secondary' : 'text-text'}`}>
-                  {label}
-                </p>
-                <p className="text-sm text-text-secondary">
-                  {reached
-                    ? `Reached ${formatDate(milestoneDate)}`
-                    : isNext
-                      ? `${nextMilestone.days - elapsedDays} days away`
-                      : formatDate(milestoneDate)
-                  }
-                </p>
-              </div>
-
-              {/* Badge */}
-              {reached && (
-                <span className="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-                  Earned
-                </span>
-              )}
-              {isNext && (
-                <span className="text-xs font-medium text-secondary bg-secondary/10 px-2.5 py-1 rounded-full">
-                  Next
-                </span>
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {/* Celebration overlay */}

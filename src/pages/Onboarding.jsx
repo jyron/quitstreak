@@ -194,7 +194,7 @@ export default function Onboarding() {
               <button
                 onClick={role === 'supporter' ? handleSupporterFinish : () => goToStep(1)}
                 disabled={!role || saving}
-                className="mt-8 w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                className="mt-8 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30 active:scale-[0.98]"
               >
                 {saving ? 'Saving...' : role === 'supporter' ? 'Continue to their dashboard' : 'Continue'}
               </button>
@@ -260,24 +260,24 @@ export default function Onboarding() {
           {step === 3 && (
             <div className="text-center">
               <h1 className="font-serif text-3xl font-bold text-text animate-fade-in">You're on your way.</h1>
-              <div className="mt-10 animate-scale-in" style={{ animationDelay: '0.2s', opacity: 0 }}>
-                <p className="text-text-secondary text-sm uppercase tracking-widest mb-4">
+              <div className="mt-10 opacity-0 animate-scale-in" style={{ animationDelay: '0.2s' }}>
+                <p className="text-text-secondary text-xs uppercase tracking-[0.2em] mb-4 font-medium">
                   {freeLabel} for
                 </p>
-                <p className="text-xl text-text-secondary mb-2">Day</p>
+                <p className="text-lg text-text-secondary mb-2 font-medium">Day</p>
                 <p className="font-serif text-8xl font-bold text-text">
                   {daysIn + 1}
                 </p>
               </div>
               {ref && (
-                <p className="mt-6 text-sm text-text-secondary animate-fade-in" style={{ animationDelay: '0.4s', opacity: 0 }}>
+                <p className="mt-6 text-sm text-text-secondary opacity-0 animate-fade-in" style={{ animationDelay: '0.4s' }}>
                   You'll be taken to their dashboard after this.
                 </p>
               )}
               {error && (
                 <p className="mt-6 text-sm text-danger">{error}</p>
               )}
-              <div className="flex gap-3 mt-10 animate-fade-in" style={{ animationDelay: '0.5s', opacity: 0 }}>
+              <div className="flex gap-3 mt-10 opacity-0 animate-fade-in" style={{ animationDelay: '0.5s' }}>
                 <button
                   onClick={() => goToStep(2)}
                   className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"

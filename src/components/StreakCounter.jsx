@@ -88,40 +88,40 @@ export default function StreakCounter({ quitDate, quitType }) {
   const styles = PHASE_STYLES[phase]
 
   return (
-    <div className={`text-center py-12 ${mounted ? 'animate-scale-in' : 'opacity-0'}`}>
-      <p className="text-text-secondary text-sm uppercase tracking-widest mb-8">
+    <div className={`text-center py-10 ${mounted ? 'animate-scale-in' : 'opacity-0'}`}>
+      <p className="text-text-secondary text-xs uppercase tracking-[0.2em] mb-6 font-medium">
         {label} for
       </p>
 
       {/* Evolving ring */}
       <div className="relative inline-flex items-center justify-center">
         <div
-          className={`absolute w-64 h-64 rounded-full ${styles.bg} ${styles.glow} animate-glow-pulse transition-all duration-1000`}
+          className={`absolute w-56 h-56 rounded-full ${styles.bg} ${styles.glow} animate-glow-pulse transition-all duration-1000`}
         />
         {phase === 'mature' && (
-          <div className="absolute w-72 h-72 rounded-full animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute w-64 h-64 rounded-full animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
         )}
 
         <div className="relative font-serif text-text z-10">
-          <span className="text-xl mr-2 text-text-secondary">Day</span>
+          <span className="text-lg mr-2 text-text-secondary font-medium">Day</span>
           <span className={`text-7xl font-bold leading-none transition-transform ${pulsing ? 'animate-count-pulse' : ''}`}>
             {dayCount}
           </span>
         </div>
       </div>
 
-      <div className="flex justify-center gap-6 mt-8 font-serif text-2xl text-text">
-        <div>
-          <span className="font-bold tabular-nums">{String(elapsed.hours).padStart(2, '0')}</span>
-          <span className="text-sm text-text-secondary ml-1">hr</span>
+      <div className="flex justify-center gap-8 mt-8 text-text">
+        <div className="flex items-baseline gap-1">
+          <span className="font-serif text-2xl font-bold tabular-nums">{String(elapsed.hours).padStart(2, '0')}</span>
+          <span className="text-xs text-text-secondary font-medium">hr</span>
         </div>
-        <div>
-          <span className="font-bold tabular-nums">{String(elapsed.minutes).padStart(2, '0')}</span>
-          <span className="text-sm text-text-secondary ml-1">min</span>
+        <div className="flex items-baseline gap-1">
+          <span className="font-serif text-2xl font-bold tabular-nums">{String(elapsed.minutes).padStart(2, '0')}</span>
+          <span className="text-xs text-text-secondary font-medium">min</span>
         </div>
-        <div>
-          <span className="font-bold tabular-nums">{String(elapsed.seconds).padStart(2, '0')}</span>
-          <span className="text-sm text-text-secondary ml-1">sec</span>
+        <div className="flex items-baseline gap-1">
+          <span className="font-serif text-2xl font-bold tabular-nums">{String(elapsed.seconds).padStart(2, '0')}</span>
+          <span className="text-xs text-text-secondary font-medium">sec</span>
         </div>
       </div>
     </div>
