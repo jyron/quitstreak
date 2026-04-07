@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Wine, Cigarette, CloudFog, LinkIcon, Copy, Check, AlertTriangle, Heart, LogOut, Trash2 } from 'lucide-react'
+import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 
@@ -15,6 +16,7 @@ function formatDateForInput(date) {
 }
 
 export default function Settings() {
+  const { user } = useAuth()
   const { profile, updateProfile, setProfile } = useProfile()
   const navigate = useNavigate()
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
@@ -36,7 +38,7 @@ export default function Settings() {
     setSaved(false)
 
     const { error } = await updateProfile({
-      display_name: displayName || 'Someone brave',
+      display_name: displayName.trim() || null,
       quit_type: quitType,
       quit_date: new Date(quitDate + 'T00:00:00').toISOString(),
     })
@@ -120,7 +122,7 @@ export default function Settings() {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Someone brave"
+              placeholder="Name or nickname (optional)"
               className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow"
             />
           </div>
@@ -227,6 +229,12 @@ export default function Settings() {
                 Reset onboarding (dev only)
               </button>
             </div>
+          )}
+
+          {user?.email && (
+            <p className="mt-4 text-xs text-text-secondary/60 text-center">
+              Signed in as {user.email}
+            </p>
           )}
         </div>
       </section>

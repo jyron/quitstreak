@@ -53,7 +53,7 @@ function SupporterHome({ profile }) {
   const { people, loading } = useSupportedPeople()
   const lastPartner = localStorage.getItem('pendingShareCode')
 
-  const hasName = profile.display_name !== 'A supporter' && profile.display_name !== 'Someone brave'
+  const hasName = !!profile.display_name
 
   return (
     <div className="px-6 pt-12 pb-6 flex flex-col items-center animate-fade-in">
@@ -76,7 +76,7 @@ function SupporterHome({ profile }) {
               People you support
             </p>
             {people.map(person => {
-              const displayName = person.display_name !== 'Someone brave' ? person.display_name : 'Someone'
+              const displayName = person.display_name || 'Someone'
               const dayCount = person.quit_date ? getDayCount(person.quit_date) : null
 
               if (!person.share_active) {
@@ -167,7 +167,7 @@ export default function Dashboard() {
   const nextMilestone = getNextMilestone(dayCount)
   const progress = nextMilestone ? Math.min(100, Math.round((dayCount / nextMilestone.days) * 100)) : 100
 
-  const displayName = profile.display_name !== 'Someone brave' ? profile.display_name : null
+  const displayName = profile.display_name || null
   const greeting = getGreeting()
 
   return (

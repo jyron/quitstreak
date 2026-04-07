@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Wine, Cigarette, CloudFog, Heart, Calendar, CalendarDays } from 'lucide-react'
+import { Wine, Cigarette, CloudFog, Heart, Calendar, CalendarDays, UserCircle, Pencil, Trophy, Flame, Sparkles, Clock } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
@@ -15,6 +15,75 @@ function formatDateForInput(date) {
   return date.toISOString().split('T')[0]
 }
 
+function OnboardingIllustration({ step, quitType }) {
+  const iconForQuit = QUIT_TYPES.find((q) => q.value === quitType)?.icon
+
+  if (step === 1) {
+    const Icon = iconForQuit || Sparkles
+    return (
+      <div className="relative w-24 h-24 mx-auto mb-6">
+        <div className={`w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center ${iconForQuit ? 'animate-scale-in' : ''}`}>
+          <Icon size={40} className="text-primary/60" />
+        </div>
+        {iconForQuit && (
+          <div className="absolute -top-1 -right-1 animate-fade-in">
+            <Sparkles size={18} className="text-secondary animate-float" />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (step === 2) {
+    return (
+      <div className="relative w-24 h-24 mx-auto mb-6">
+        <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+          <CalendarDays size={40} className="text-primary/40 animate-float" />
+        </div>
+        <div className="absolute -bottom-1 -right-1">
+          <Clock size={18} className="text-primary/30" />
+        </div>
+      </div>
+    )
+  }
+
+  if (step === 3) {
+    return (
+      <div className="relative w-24 h-24 mx-auto mb-6">
+        <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+          <UserCircle size={40} className="text-primary/30" />
+        </div>
+        <div className="absolute -top-1 -right-1 animate-fade-in">
+          <Pencil size={16} className="text-primary/40 animate-float" />
+        </div>
+      </div>
+    )
+  }
+
+  if (step === 4) {
+    return (
+      <div className="relative w-32 h-24 mx-auto mb-6 flex items-center justify-center">
+        <div className="absolute left-2 top-2 opacity-0 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <Flame size={20} className="text-secondary/40 animate-float" />
+        </div>
+        <div className="opacity-0 animate-scale-in" style={{ animationDelay: '0.15s' }}>
+          <Trophy size={44} className="text-secondary" />
+        </div>
+        <div className="absolute right-2 top-2 opacity-0 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <Flame size={20} className="text-secondary/40 animate-float" style={{ animationDelay: '0.5s' }} />
+        </div>
+      </div>
+    )
+  }
+
+  // Step 0 (role selection)
+  return (
+    <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center animate-fade-in">
+      <Heart size={40} className="text-primary/30" />
+    </div>
+  )
+}
+
 export default function Onboarding() {
   const { user } = useAuth()
   const { setProfile } = useProfile()
@@ -25,6 +94,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(ref ? 0 : 1)
   const [role, setRole] = useState(null)
   const [supporterName, setSupporterName] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [quitType, setQuitType] = useState(null)
   const [quitDate, setQuitDate] = useState(formatDateForInput(new Date()))
   const [saving, setSaving] = useState(false)
@@ -49,7 +119,7 @@ export default function Onboarding() {
 
     const { data, error } = await supabase.from('profiles').upsert({
       id: user.id,
-      display_name: supporterName.trim() || 'A supporter',
+      display_name: supporterName.trim() || null,
       account_type: 'supporter',
     }, { onConflict: 'id' }).select().single()
 
@@ -75,6 +145,7 @@ export default function Onboarding() {
     const { data, error } = await supabase.from('profiles').upsert({
       id: user.id,
       account_type: 'addict',
+      display_name: displayName.trim() || null,
       quit_type: quitType,
       quit_date: new Date(quitDate + 'T00:00:00').toISOString(),
     }, { onConflict: 'id' }).select().single()
@@ -97,7 +168,8 @@ export default function Onboarding() {
   const freeLabel = quitType === 'drinking' ? 'alcohol-free' : quitType === 'smoking' ? 'smoke-free' : 'vape-free'
   const daysIn = Math.max(0, Math.floor((Date.now() - new Date(quitDate + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24)))
 
-  const showDots = step >= 1 && role === 'addict'
+  const showDots = step >= 1 && (role === 'addict' || !ref)
+  const totalSteps = 4
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -105,7 +177,7 @@ export default function Onboarding() {
         {/* Progress dots */}
         {showDots && (
           <div className="flex justify-center gap-2 mb-10">
-            {[1, 2, 3].map((s) => (
+            {Array.from({ length: totalSteps }, (_, i) => i + 1).map((s) => (
               <div
                 key={s}
                 className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
@@ -122,12 +194,13 @@ export default function Onboarding() {
             animating ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'
           }`}
         >
-          {/* Step 0: Role selection */}
+          {/* Step 0: Role selection (share-code only) */}
           {step === 0 && (
             <div className="animate-fade-in">
+              <OnboardingIllustration step={0} />
               <h1 className="font-serif text-3xl font-bold text-text">Welcome to QuitStreak</h1>
               <p className="mt-3 text-text-secondary leading-relaxed">
-                You've been shared someone's quitting journey. Are you here to support them, or are you also working on something of your own?
+                You got someone's link. Are you here to cheer them on, or tracking something of your own?
               </p>
               <div className="mt-8 flex flex-col gap-4">
                 <button
@@ -168,7 +241,7 @@ export default function Onboarding() {
                       I'm also tracking my own journey
                     </p>
                     <p className="text-sm text-text-secondary mt-0.5">
-                      Set up your quitting streak, then view theirs too
+                      Set up your streak, then view theirs too
                     </p>
                   </div>
                 </button>
@@ -176,9 +249,12 @@ export default function Onboarding() {
 
               {role === 'supporter' && (
                 <div className="mt-6 animate-fade-in">
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    Your name (so they know who's cheering them on)
+                  <label className="block text-sm font-medium text-text-secondary mb-1">
+                    What should we call you?
                   </label>
+                  <p className="text-xs text-text-secondary/70 mb-2">
+                    So they know who sent it. Or don't — anonymous support works too.
+                  </p>
                   <input
                     type="text"
                     value={supporterName}
@@ -204,6 +280,7 @@ export default function Onboarding() {
           {/* Step 1: What are you quitting? */}
           {step === 1 && (
             <div className="animate-fade-in">
+              <OnboardingIllustration step={1} quitType={quitType} />
               <h1 className="font-serif text-3xl font-bold text-text">What are you quitting?</h1>
               <div className="mt-8 flex flex-col gap-4">
                 {QUIT_TYPES.map(({ value, label, icon: Icon }) => (
@@ -256,10 +333,44 @@ export default function Onboarding() {
             />
           )}
 
-          {/* Step 3: Confirmation */}
+          {/* Step 3: What should we call you? */}
           {step === 3 && (
+            <div className="animate-fade-in">
+              <OnboardingIllustration step={3} />
+              <h1 className="font-serif text-3xl font-bold text-text">What should we call you?</h1>
+              <p className="mt-3 text-text-secondary leading-relaxed">
+                Just a first name or nickname. Or skip it — we won't use a name anywhere if you don't want one.
+              </p>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Name or nickname"
+                className="mt-6 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-lg"
+              />
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={() => goToStep(4)}
+                  className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={() => goToStep(4)}
+                  disabled={!displayName.trim()}
+                  className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Confirmation */}
+          {step === 4 && (
             <div className="text-center">
-              <h1 className="font-serif text-3xl font-bold text-text animate-fade-in">You're on your way.</h1>
+              <OnboardingIllustration step={4} />
+              <h1 className="font-serif text-3xl font-bold text-text animate-fade-in">Locked in.</h1>
               <div className="mt-10 opacity-0 animate-scale-in" style={{ animationDelay: '0.2s' }}>
                 <p className="text-text-secondary text-xs uppercase tracking-[0.2em] mb-4 font-medium">
                   {freeLabel} for
@@ -271,7 +382,7 @@ export default function Onboarding() {
               </div>
               {ref && (
                 <p className="mt-6 text-sm text-text-secondary opacity-0 animate-fade-in" style={{ animationDelay: '0.4s' }}>
-                  You'll be taken to their dashboard after this.
+                  You'll see their dashboard next.
                 </p>
               )}
               {error && (
@@ -279,7 +390,7 @@ export default function Onboarding() {
               )}
               <div className="flex gap-3 mt-10 opacity-0 animate-fade-in" style={{ animationDelay: '0.5s' }}>
                 <button
-                  onClick={() => goToStep(2)}
+                  onClick={() => goToStep(3)}
                   className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
                 >
                   Back
@@ -289,7 +400,7 @@ export default function Onboarding() {
                   disabled={saving}
                   className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                 >
-                  {saving ? 'Saving...' : 'Start tracking'}
+                  {saving ? 'Saving...' : "Let's go"}
                 </button>
               </div>
             </div>
@@ -321,7 +432,7 @@ function DevResetButton() {
       onClick={handleReset}
       className="fixed bottom-6 right-4 px-3 py-1.5 rounded-full bg-amber-500/90 text-white text-xs font-medium shadow-md hover:bg-amber-600 transition-colors z-50"
     >
-      ↺ Reset onboarding
+      Reset onboarding
     </button>
   )
 }
@@ -332,6 +443,7 @@ function Step2QuitDate({ quitDate, setQuitDate, onBack, onContinue }) {
 
   return (
     <div className="animate-fade-in">
+      <OnboardingIllustration step={2} />
       <h1 className="font-serif text-3xl font-bold text-text">When did you quit?</h1>
       <p className="mt-2 text-text-secondary">Pick the day your streak started.</p>
 
