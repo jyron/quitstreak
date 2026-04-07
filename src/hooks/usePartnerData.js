@@ -110,7 +110,7 @@ export function usePartnerData(shareCode) {
         .select('display_name')
         .eq('id', user.id)
         .maybeSingle()
-      if (data?.display_name && data.display_name !== 'Someone brave' && data.display_name !== 'A supporter') {
+      if (data?.display_name) {
         senderName = data.display_name
       }
     }

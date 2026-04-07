@@ -56,7 +56,7 @@ export default function PartnerDashboard() {
     )
   }
 
-  const displayName = profile.display_name !== 'Someone brave' ? profile.display_name : 'Someone'
+  const displayName = profile.display_name || 'Someone'
 
   return (
     <div className="min-h-screen bg-background">
