@@ -5,6 +5,7 @@ import { useCheckins } from '../hooks/useCheckins'
 import { useProfile } from '../hooks/useProfile'
 import MoodSelector from '../components/MoodSelector'
 import CravingScale from '../components/CravingScale'
+import Confetti from '../components/Confetti'
 
 function getConfirmationMessage(quitDate) {
   if (!quitDate) return "You're doing great."
@@ -158,6 +159,7 @@ export default function CheckIn() {
           {/* Confirmation */}
           {step === 'done' && (
             <div className="text-center pt-16">
+              <Confetti />
               <div className="animate-scale-in mb-6">
                 <CheckCircle2 className="w-14 h-14 text-primary mx-auto" strokeWidth={1.5} />
               </div>

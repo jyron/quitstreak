@@ -1,7 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Heart, X, ArrowRight, Trophy, Pencil } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
+import Confetti from '../components/Confetti'
 import CheckinHistory from '../components/CheckinHistory'
 import FaceIcon from '../components/FaceIcon'
 import { useProfile } from '../hooks/useProfile'
@@ -145,8 +146,16 @@ export default function Dashboard() {
   const { checkins, loading: checkinsLoading, todayCheckin } = useCheckins()
   const { nudges, dismissNudges } = useNudges()
   const navigate = useNavigate()
+  const [showConfetti, setShowConfetti] = useState(false)
 
   const quitDate = useMemo(() => new Date(profile?.quit_date), [profile?.quit_date])
+
+  useEffect(() => {
+    if (sessionStorage.getItem('showConfetti') === '1') {
+      sessionStorage.removeItem('showConfetti')
+      setShowConfetti(true)
+    }
+  }, [])
 
   if (loading || !profile) {
     return (
@@ -172,6 +181,7 @@ export default function Dashboard() {
 
   return (
     <div className="px-6 pt-8 pb-6">
+      {showConfetti && <Confetti />}
       {/* Greeting header */}
       <div className="text-center mb-2 opacity-0 animate-fade-in">
         <h1 className="font-serif text-2xl font-bold text-text">

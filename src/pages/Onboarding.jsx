@@ -157,6 +157,7 @@ export default function Onboarding() {
     } else {
       setProfile(data)
       clearPendingCode()
+      sessionStorage.setItem('showConfetti', '1')
       if (ref) {
         navigate(`/partner/${ref}`, { replace: true })
       } else {
