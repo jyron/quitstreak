@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Heart, X, ArrowRight, Trophy, Pencil } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
@@ -148,7 +148,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [showConfetti, setShowConfetti] = useState(false)
 
-  const quitDate = useMemo(() => new Date(profile?.quit_date), [profile?.quit_date])
+  const quitDate = profile?.quit_date
 
   useEffect(() => {
     if (sessionStorage.getItem('showConfetti') === '1') {
@@ -172,7 +172,7 @@ export default function Dashboard() {
   const todayMood = todayCheckin ? getMood(todayCheckin.mood) : null
   const todayCraving = todayCheckin ? getCravingLevel(todayCheckin.craving) : null
 
-  const dayCount = Math.floor((Date.now() - quitDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const dayCount = Math.floor((Date.now() - new Date(quitDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
   const nextMilestone = getNextMilestone(dayCount)
   const progress = nextMilestone ? Math.min(100, Math.round((dayCount / nextMilestone.days) * 100)) : 100
 

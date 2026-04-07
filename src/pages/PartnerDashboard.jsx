@@ -91,7 +91,7 @@ export default function PartnerDashboard() {
 
         {/* Streak counter */}
         <StreakCounter
-          quitDate={new Date(profile.quit_date)}
+          quitDate={profile.quit_date}
           quitType={profile.quit_type}
         />
 
