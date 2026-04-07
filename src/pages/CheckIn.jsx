@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CheckCircle2 } from 'lucide-react'
 import { useCheckins } from '../hooks/useCheckins'
 import { useProfile } from '../hooks/useProfile'
 import MoodSelector from '../components/MoodSelector'
@@ -30,7 +31,7 @@ export default function CheckIn() {
 
   useEffect(() => {
     if (step !== 'done') return
-    const timer = setTimeout(() => navigate('/app'), 3000)
+    const timer = setTimeout(() => navigate('/app'), 5000)
     return () => clearTimeout(timer)
   }, [step, navigate])
 
@@ -59,12 +60,12 @@ export default function CheckIn() {
       <div className="flex-1 max-w-lg mx-auto px-6 pt-12 pb-24 w-full">
         {/* Progress dots */}
         {step !== 'done' && (
-          <div className="flex justify-center gap-2 mb-10">
+          <div className="flex justify-center gap-2.5 mb-10">
             {[1, 2, 3].map((s) => (
               <div
                 key={s}
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                  s === step ? 'bg-primary scale-125' : s < step ? 'bg-primary/40' : 'bg-gray-200'
+                className={`rounded-full transition-all duration-300 ${
+                  s === step ? 'w-6 h-3 bg-primary' : s < step ? 'w-3 h-3 bg-primary/40' : 'w-3 h-3 bg-gray-200'
                 }`}
               />
             ))}
@@ -88,7 +89,7 @@ export default function CheckIn() {
               <button
                 onClick={() => goToStep(2)}
                 disabled={mood === null}
-                className="mt-8 w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                className="mt-8 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30 active:scale-[0.98]"
               >
                 Continue
               </button>
@@ -106,14 +107,14 @@ export default function CheckIn() {
               <div className="flex gap-3 mt-8">
                 <button
                   onClick={() => goToStep(1)}
-                  className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+                  className="py-3.5 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => goToStep(3)}
                   disabled={craving === null}
-                  className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                  className="flex-1 py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30 active:scale-[0.98]"
                 >
                   Continue
                 </button>
@@ -125,30 +126,30 @@ export default function CheckIn() {
           {step === 3 && (
             <div className="animate-fade-in">
               <h1 className="font-serif text-3xl font-bold text-text">Anything on your mind?</h1>
-              <p className="mt-2 text-text-secondary">This is just for you.</p>
+              <p className="mt-2 text-text-secondary">This is just for you. Optional.</p>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={280}
                 rows={4}
                 placeholder="Write a quick note..."
-                className="mt-8 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
+                className="mt-8 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none transition-shadow"
               />
               <p className="mt-1 text-right text-xs text-text-secondary">{note.length}/280</p>
               {error && <p className="mt-4 text-sm text-danger">{error}</p>}
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => goToStep(2)}
-                  className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+                  className="py-3.5 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
                 >
                   Back
                 </button>
                 <button
                   onClick={() => handleSubmit()}
                   disabled={submitting}
-                  className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="flex-1 py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 active:scale-[0.98]"
                 >
-                  {submitting ? 'Saving...' : 'Log it'}
+                  {submitting ? 'Saving...' : note.trim() ? 'Log it' : 'Skip & log'}
                 </button>
               </div>
             </div>
@@ -157,13 +158,16 @@ export default function CheckIn() {
           {/* Confirmation */}
           {step === 'done' && (
             <div className="text-center pt-16">
-              <h1 className="font-serif text-5xl font-bold text-text animate-scale-in">Logged.</h1>
-              <p className="mt-6 text-lg text-text-secondary opacity-0 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+              <div className="animate-scale-in mb-6">
+                <CheckCircle2 className="w-14 h-14 text-primary mx-auto" strokeWidth={1.5} />
+              </div>
+              <h1 className="font-serif text-4xl font-bold text-text opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>Logged.</h1>
+              <p className="mt-6 text-lg text-text-secondary opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
                 {getConfirmationMessage(profile?.quit_date)}
               </p>
               <button
                 onClick={() => navigate('/app')}
-                className="mt-10 py-3 px-8 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors opacity-0 animate-fade-in" style={{ animationDelay: '0.5s' }}
+                className="mt-10 py-3.5 px-8 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors opacity-0 animate-fade-in active:scale-[0.98]" style={{ animationDelay: '0.6s' }}
               >
                 Back to Dashboard
               </button>

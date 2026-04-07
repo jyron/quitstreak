@@ -31,6 +31,20 @@
   .animate-stagger-children > *:nth-child(6) { animation-delay: 0.5s; }
 }
 
+/* Loading spinner */
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid #e5e5e5;
+  border-top-color: #2D6A6A;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Confetti celebration */
 .confetti-container {
   position: fixed;

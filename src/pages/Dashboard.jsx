@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Heart, X, ArrowRight, Trophy } from 'lucide-react'
+import { Heart, X, ArrowRight, Trophy, Pencil } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
 import CheckinHistory from '../components/CheckinHistory'
 import FaceIcon from '../components/FaceIcon'
@@ -42,6 +42,13 @@ function getDayCount(quitDate) {
   return Math.floor((Date.now() - new Date(quitDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
 }
 
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 function SupporterHome({ profile }) {
   const { people, loading } = useSupportedPeople()
   const lastPartner = localStorage.getItem('pendingShareCode')
@@ -60,7 +67,9 @@ function SupporterHome({ profile }) {
 
       <div className="mt-8 w-full max-w-sm flex flex-col gap-3">
         {loading ? (
-          <div className="text-center text-text-secondary py-4">Loading...</div>
+          <div className="flex justify-center py-8">
+            <div className="loading-spinner" />
+          </div>
         ) : people.length > 0 ? (
           <>
             <p className="text-xs font-medium text-text-secondary uppercase tracking-wider px-1">
@@ -142,7 +151,7 @@ export default function Dashboard() {
   if (loading || !profile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-text-secondary">Loading...</div>
+        <div className="loading-spinner" />
       </div>
     )
   }
@@ -158,12 +167,15 @@ export default function Dashboard() {
   const nextMilestone = getNextMilestone(dayCount)
   const progress = nextMilestone ? Math.min(100, Math.round((dayCount / nextMilestone.days) * 100)) : 100
 
+  const displayName = profile.display_name !== 'Someone brave' ? profile.display_name : null
+  const greeting = getGreeting()
+
   return (
     <div className="px-6 pt-8 pb-6">
-      {/* Quit context header */}
+      {/* Greeting header */}
       <div className="text-center mb-2 opacity-0 animate-fade-in">
         <h1 className="font-serif text-2xl font-bold text-text">
-          {profile.display_name !== 'Someone brave' ? `${profile.display_name}'s Journey` : 'Your Journey'}
+          {displayName ? `${greeting}, ${displayName.split(' ')[0]}` : `${greeting}`}
         </h1>
         <p className="text-text-secondary mt-1">
           Quitting <span className="font-medium text-primary">{TYPE_LABELS[profile.quit_type] || profile.quit_type}</span>
@@ -189,7 +201,7 @@ export default function Dashboard() {
           </div>
           <button
             onClick={dismissNudges}
-            className="text-text-secondary hover:text-text transition-colors flex-shrink-0"
+            className="text-text-secondary hover:text-text transition-colors flex-shrink-0 p-1"
           >
             <X className="w-4 h-4" />
           </button>
@@ -200,7 +212,7 @@ export default function Dashboard() {
       {nextMilestone && (
         <button
           onClick={() => navigate('/app/milestones')}
-          className="w-full mt-4 py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-secondary/30 hover:shadow-md transition-all opacity-0 animate-fade-in-up stagger-2"
+          className="w-full mt-5 py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-secondary/30 hover:shadow-md transition-all opacity-0 animate-fade-in-up stagger-2"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
@@ -225,19 +237,18 @@ export default function Dashboard() {
       )}
 
       {/* Today check-in CTA / summary */}
-      <div className="mt-4 opacity-0 animate-fade-in-up stagger-3">
+      <div className="mt-5 opacity-0 animate-fade-in-up stagger-3">
         {todayCheckin && todayMood && todayCraving ? (
           <button
             onClick={() => navigate('/app/check-in')}
             className="w-full py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 text-left hover:bg-primary/10 transition-colors"
           >
             <div className="flex items-center gap-4">
-              <FaceIcon mood={todayMood} size={32} />
+              <FaceIcon mood={todayMood} size={36} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-primary">Checked in today</span>
-                  <span className="text-xs text-text-secondary">·</span>
-                  <span className="text-xs text-text-secondary">{todayCraving.label} cravings</span>
+                  <span className="text-xs text-text-secondary">· {todayCraving.label} cravings</span>
                 </div>
                 {todayCheckin.note && (
                   <p className="text-sm text-text-secondary mt-0.5 truncate">{todayCheckin.note}</p>
@@ -248,10 +259,17 @@ export default function Dashboard() {
         ) : (
           <button
             onClick={() => navigate('/app/check-in')}
-            className="w-full py-4 px-6 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-primary/20 hover:shadow-md transition-all"
+            className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-primary/20 hover:shadow-md transition-all group"
           >
-            <p className="font-medium text-text">How are you feeling?</p>
-            <p className="text-sm text-text-secondary mt-0.5">Log today's mood and cravings</p>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/15 transition-colors">
+                <Pencil className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-text">How are you feeling?</p>
+                <p className="text-sm text-text-secondary mt-0.5">Log today's mood and cravings</p>
+              </div>
+            </div>
           </button>
         )}
       </div>

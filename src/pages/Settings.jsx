@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Wine, Cigarette, CloudFog, LinkIcon, Copy, Check, AlertTriangle, Heart } from 'lucide-react'
+import { Wine, Cigarette, CloudFog, LinkIcon, Copy, Check, AlertTriangle, Heart, LogOut, Trash2 } from 'lucide-react'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 
@@ -65,7 +65,6 @@ export default function Settings() {
 
   async function handleDeleteAccount() {
     setDeleting(true)
-    // Delete profile data first, then sign out
     const { error: deleteError } = await supabase
       .from('profiles')
       .delete()
@@ -96,109 +95,123 @@ export default function Settings() {
     <div className="px-6 pt-8 pb-6 animate-fade-in">
       <h1 className="font-serif text-2xl font-bold text-text mb-8">Settings</h1>
 
-      <div className="space-y-6">
-        {/* Display name */}
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-2">
-            Display name
-          </label>
-          <input
-            type="text"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Someone brave"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          />
-        </div>
-
-        {/* Quit type */}
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-2">
-            What are you quitting?
-          </label>
-          <div className="flex flex-col gap-3">
-            {QUIT_TYPES.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setQuitType(value)}
-                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
-                  quitType === value
-                    ? 'border-primary bg-primary/5'
-                    : 'border-gray-100 bg-white hover:border-gray-200'
-                }`}
-              >
-                <Icon
-                  size={24}
-                  className={`transition-colors ${quitType === value ? 'text-primary' : 'text-text-secondary'}`}
-                />
-                <span className={`font-medium ${quitType === value ? 'text-primary' : 'text-text'}`}>
-                  {label}
-                </span>
-              </button>
-            ))}
+      {/* Profile Section */}
+      <section>
+        <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3 px-1">
+          Profile
+        </p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-5">
+          {/* Display name */}
+          <div>
+            <label className="block text-sm font-medium text-text mb-1.5">
+              Display name
+            </label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Someone brave"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow"
+            />
           </div>
+
+          {/* Quit type */}
+          <div>
+            <label className="block text-sm font-medium text-text mb-2">
+              What are you quitting?
+            </label>
+            <div className="flex gap-2">
+              {QUIT_TYPES.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  onClick={() => setQuitType(value)}
+                  className={`flex-1 flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all active:scale-95 ${
+                    quitType === value
+                      ? 'border-primary bg-primary/5'
+                      : 'border-gray-100 bg-white hover:border-gray-200'
+                  }`}
+                >
+                  <Icon
+                    size={22}
+                    className={`transition-colors ${quitType === value ? 'text-primary' : 'text-text-secondary'}`}
+                  />
+                  <span className={`text-xs font-medium ${quitType === value ? 'text-primary' : 'text-text-secondary'}`}>
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quit date */}
+          <div>
+            <label className="block text-sm font-medium text-text mb-1.5">
+              Quit date
+            </label>
+            <input
+              type="date"
+              value={quitDate}
+              max={formatDateForInput(new Date())}
+              onChange={(e) => setQuitDate(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-shadow"
+            />
+          </div>
+
+          {error && <p className="text-sm text-danger">{error}</p>}
+
+          {/* Save button */}
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            className="w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-all disabled:opacity-30 active:scale-[0.98]"
+          >
+            {saving ? 'Saving...' : saved ? 'Saved!' : 'Save changes'}
+          </button>
         </div>
+      </section>
 
-        {/* Quit date */}
-        <div>
-          <label className="block text-sm font-medium text-text-secondary mb-2">
-            Quit date
-          </label>
-          <input
-            type="date"
-            value={quitDate}
-            max={formatDateForInput(new Date())}
-            onChange={(e) => setQuitDate(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-          />
+      {/* Partner Support Section */}
+      <section className="mt-8">
+        <ShareSection profile={profile} />
+      </section>
+
+      {/* Danger Zone */}
+      <section className="mt-8">
+        <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3 px-1">
+          Account
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={() => setShowResetModal(true)}
+            className="w-full py-4 px-5 rounded-xl border border-danger/20 bg-white text-left hover:bg-danger/5 transition-colors group"
+          >
+            <p className="font-medium text-danger">I need to reset my streak</p>
+            <p className="text-sm text-text-secondary mt-0.5">Start fresh from today — your history stays</p>
+          </button>
+
+          <button
+            onClick={handleSignOut}
+            className="w-full py-3.5 px-5 rounded-xl border border-gray-200 bg-white text-text-secondary font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="w-full py-3 px-5 rounded-xl text-text-secondary/50 text-sm font-medium hover:text-danger hover:bg-danger/5 transition-colors flex items-center justify-center gap-1.5"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete my account
+          </button>
         </div>
-
-        {error && <p className="text-sm text-danger">{error}</p>}
-
-        {/* Save button */}
-        <button
-          onClick={handleSave}
-          disabled={saving || !hasChanges}
-          className="w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
-        >
-          {saving ? 'Saving...' : saved ? 'Saved!' : 'Save changes'}
-        </button>
-      </div>
-
-      {/* Share link */}
-      <ShareSection profile={profile} />
-
-      {/* Reset streak */}
-      <div className="mt-8 pt-6 border-t border-gray-100">
-        <button
-          onClick={() => setShowResetModal(true)}
-          className="w-full py-3 px-6 rounded-xl border border-danger/30 text-danger font-medium hover:bg-danger/5 transition-colors"
-        >
-          I need to reset my streak
-        </button>
-      </div>
-
-      {/* Sign out & Delete */}
-      <div className="mt-6 pt-6 border-t border-gray-100 space-y-3">
-        <button
-          onClick={handleSignOut}
-          className="w-full py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
-        >
-          Sign out
-        </button>
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          className="w-full py-3 px-6 rounded-xl text-text-secondary/60 text-sm font-medium hover:text-danger transition-colors"
-        >
-          Delete my account
-        </button>
-      </div>
+      </section>
 
       {/* Reset streak modal */}
       {showResetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowResetModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowResetModal(false)}>
           <div
-            className="bg-white rounded-2xl shadow-xl p-6 mx-6 max-w-sm w-full animate-slide-up"
+            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-6 mx-0 sm:mx-6 max-w-sm w-full animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -214,26 +227,28 @@ export default function Settings() {
               <button
                 onClick={handleResetStreak}
                 disabled={resetting}
-                className="w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 active:scale-[0.98]"
               >
                 {resetting ? 'Resetting...' : 'Reset to today'}
               </button>
               <button
                 onClick={() => setShowResetModal(false)}
-                className="w-full py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+                className="w-full py-3.5 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
               >
                 Actually, I'm still going
               </button>
             </div>
+            {/* Bottom safe area for sheet-style modal */}
+            <div className="h-2 sm:hidden" />
           </div>
         </div>
       )}
 
       {/* Delete account modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowDeleteModal(false)}>
           <div
-            className="bg-white rounded-2xl shadow-xl p-6 mx-6 max-w-sm w-full animate-slide-up"
+            className="bg-white rounded-t-2xl sm:rounded-2xl shadow-xl p-6 mx-0 sm:mx-6 max-w-sm w-full animate-slide-up"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="w-12 h-12 rounded-full bg-danger/10 flex items-center justify-center mx-auto mb-4">
@@ -249,17 +264,18 @@ export default function Settings() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleting}
-                className="w-full py-3 px-6 rounded-xl bg-danger text-white font-medium hover:bg-danger/90 transition-colors disabled:opacity-50"
+                className="w-full py-3.5 px-6 rounded-xl bg-danger text-white font-medium hover:bg-danger/90 transition-colors disabled:opacity-50 active:scale-[0.98]"
               >
                 {deleting ? 'Deleting...' : 'Yes, delete everything'}
               </button>
               <button
                 onClick={() => setShowDeleteModal(false)}
-                className="w-full py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+                className="w-full py-3.5 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
               >
                 Keep my account
               </button>
             </div>
+            <div className="h-2 sm:hidden" />
           </div>
         </div>
       )}
@@ -284,26 +300,26 @@ function ShareSection({ profile }) {
   }
 
   return (
-    <div className="mt-8 pt-6 border-t border-gray-100">
-      <div className="flex items-center gap-2 mb-3">
-        <LinkIcon className="w-4 h-4 text-text-secondary" />
-        <label className="text-sm font-medium text-text-secondary">Partner Support</label>
-      </div>
+    <>
+      <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3 px-1 flex items-center gap-1.5">
+        <LinkIcon className="w-3.5 h-3.5" />
+        Partner Support
+      </p>
 
       {shareUrl ? (
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-text truncate font-mono flex-1">{shareUrl}</p>
+            <p className="text-sm text-text truncate font-mono flex-1 bg-gray-50 px-3 py-2 rounded-lg">{shareUrl}</p>
             <button
               onClick={handleCopy}
-              className="flex-shrink-0 p-2 rounded-lg text-primary hover:bg-primary/5 transition-colors"
+              className="flex-shrink-0 p-2.5 rounded-lg text-primary hover:bg-primary/5 transition-colors active:scale-95"
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             </button>
           </div>
           <Link
             to="/app/partner-setup"
-            className="mt-2 inline-block text-sm text-primary font-medium hover:text-primary/80 transition-colors"
+            className="mt-3 inline-block text-sm text-primary font-medium hover:text-primary/80 transition-colors"
           >
             Manage sharing &rarr;
           </Link>
@@ -311,7 +327,7 @@ function ShareSection({ profile }) {
       ) : (
         <Link
           to="/app/partner-setup"
-          className="block bg-white rounded-xl border border-gray-100 p-4 hover:border-primary/20 hover:shadow-sm transition-all"
+          className="block bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:border-primary/20 hover:shadow-md transition-all"
         >
           <p className="font-medium text-text">Share your journey</p>
           <p className="text-sm text-text-secondary mt-0.5">
@@ -319,6 +335,6 @@ function ShareSection({ profile }) {
           </p>
         </Link>
       )}
-    </div>
+    </>
   )
 }
