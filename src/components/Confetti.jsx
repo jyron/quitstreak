@@ -6,7 +6,7 @@ export default function Confetti({ count = 30 }) {
   const [visible, setVisible] = useState(true)
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 2500)
+    const timer = setTimeout(() => setVisible(false), 4000)
     return () => clearTimeout(timer)
   }, [])
 
@@ -22,7 +22,7 @@ export default function Confetti({ count = 30 }) {
             left: `${Math.random() * 100}%`,
             backgroundColor: COLORS[i % COLORS.length],
             animationDelay: `${Math.random() * 0.8}s`,
-            animationDuration: `${1 + Math.random() * 1}s`,
+            animationDuration: `${1.5 + Math.random() * 1.5}s`,
             transform: `rotate(${Math.random() * 360}deg)`,
             width: `${6 + Math.random() * 6}px`,
             height: `${6 + Math.random() * 6}px`,
