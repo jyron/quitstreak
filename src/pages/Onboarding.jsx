@@ -296,7 +296,33 @@ export default function Onboarding() {
           )}
         </div>
       </div>
+      {import.meta.env.DEV && <DevResetButton />}
     </div>
+  )
+}
+
+function DevResetButton() {
+  const { user } = useAuth()
+  const { setProfile } = useProfile()
+  const navigate = useNavigate()
+
+  async function handleReset() {
+    const { error } = await supabase.from('profiles').delete().eq('id', user.id)
+    if (error) {
+      console.error('[dev] profile reset failed:', error.message)
+      return
+    }
+    setProfile(null)
+    navigate('/app/onboarding', { replace: true })
+  }
+
+  return (
+    <button
+      onClick={handleReset}
+      className="fixed bottom-6 right-4 px-3 py-1.5 rounded-full bg-amber-500/90 text-white text-xs font-medium shadow-md hover:bg-amber-600 transition-colors z-50"
+    >
+      ↺ Reset onboarding
+    </button>
   )
 }
 

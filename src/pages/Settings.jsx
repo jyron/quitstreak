@@ -15,7 +15,7 @@ function formatDateForInput(date) {
 }
 
 export default function Settings() {
-  const { profile, updateProfile } = useProfile()
+  const { profile, updateProfile, setProfile } = useProfile()
   const navigate = useNavigate()
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '')
   const [quitType, setQuitType] = useState(profile?.quit_type ?? '')
@@ -75,6 +75,16 @@ export default function Settings() {
       navigate('/', { replace: true })
     }
     setDeleting(false)
+  }
+
+  async function handleDevResetOnboarding() {
+    const { error } = await supabase.from('profiles').delete().eq('id', profile.id)
+    if (error) {
+      console.error('[dev] profile reset failed:', error.message)
+      return
+    }
+    setProfile(null)
+    navigate('/app/onboarding', { replace: true })
   }
 
   async function handleSignOut() {
@@ -204,6 +214,20 @@ export default function Settings() {
             <Trash2 className="w-3.5 h-3.5" />
             Delete my account
           </button>
+
+          {import.meta.env.DEV && (
+            <div className="pt-3 border-t border-dashed border-amber-300">
+              <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-2 px-1">
+                Dev Only
+              </p>
+              <button
+                onClick={handleDevResetOnboarding}
+                className="w-full py-3 px-5 rounded-xl border border-amber-300 bg-amber-50 text-amber-700 text-sm font-medium hover:bg-amber-100 transition-colors"
+              >
+                Reset onboarding (dev only)
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
