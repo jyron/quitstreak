@@ -56,52 +56,6 @@ const plusFeatures = [
   'Priority support',
 ]
 
-function DevLoginPanel() {
-  const [devEmail, setDevEmail] = useState(import.meta.env.VITE_DEV_EMAIL ?? 'test@dev.local')
-  const [devPassword, setDevPassword] = useState(import.meta.env.VITE_DEV_PASSWORD ?? 'devpassword123')
-  const [devLoading, setDevLoading] = useState(false)
-  const [devError, setDevError] = useState(null)
-
-  async function handleDevLogin(e) {
-    e.preventDefault()
-    setDevError(null)
-    setDevLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email: devEmail, password: devPassword })
-    setDevLoading(false)
-    if (error) setDevError(error.message)
-    // On success: onAuthStateChange fires → Landing redirects automatically
-  }
-
-  return (
-    <div className="mt-4 max-w-lg bg-amber-50 border border-amber-300 rounded-xl p-4">
-      <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-0.5">Dev Testing</p>
-      <p className="text-xs text-amber-600 mb-3">Password sign-in — bypasses magic link email</p>
-      <form onSubmit={handleDevLogin} className="space-y-2">
-        <input
-          type="email"
-          value={devEmail}
-          onChange={(e) => setDevEmail(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-text text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
-        />
-        <input
-          type="password"
-          value={devPassword}
-          onChange={(e) => setDevPassword(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg border border-amber-200 bg-white text-text text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
-        />
-        <button
-          type="submit"
-          disabled={devLoading}
-          className="w-full py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium transition-colors disabled:opacity-50"
-        >
-          {devLoading ? 'Signing in...' : 'Quick Dev Login'}
-        </button>
-        {devError && <p className="text-xs text-danger">{devError}</p>}
-      </form>
-    </div>
-  )
-}
-
 function useInView(ref) {
   const [visible, setVisible] = useState(false)
   useEffect(() => {
@@ -249,9 +203,6 @@ export default function Landing() {
             </form>
           )}
         </div>
-
-        {/* Dev login panel — only visible in development builds */}
-        {import.meta.env.DEV && <DevLoginPanel />}
 
         {/* How It Works */}
         <section ref={howRef} className={`mt-24 transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>

@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 
+const DEV_EMAIL = 'test@jyron.com'
+
 const QUIT_TYPES = [
   { value: 'drinking', label: 'Drinking', icon: Wine },
   { value: 'smoking', label: 'Smoking', icon: Cigarette },
@@ -225,7 +227,7 @@ export default function Settings() {
             Delete my account
           </button>
 
-          {import.meta.env.DEV && (
+          {user?.email === DEV_EMAIL && (
             <div className="pt-3 border-t border-dashed border-amber-300">
               <p className="text-xs font-medium text-amber-600 uppercase tracking-wider mb-2 px-1">
                 Dev Only

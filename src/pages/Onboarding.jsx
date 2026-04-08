@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 
+const DEV_EMAIL = 'test@jyron.com'
+
 const QUIT_TYPES = [
   { value: 'drinking', label: 'Drinking', icon: Wine },
   { value: 'smoking', label: 'Smoking', icon: Cigarette },
@@ -415,7 +417,7 @@ export default function Onboarding() {
           )}
         </div>
       </div>
-      {import.meta.env.DEV && <DevResetButton />}
+      {user?.email === DEV_EMAIL && <DevResetButton />}
     </div>
   )
 }
