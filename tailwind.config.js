@@ -47,10 +47,6 @@ export default {
           '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
           '50%': { opacity: '0.7', transform: 'scale(1.05)' },
         },
-        'confetti-fall': {
-          '0%': { transform: 'translateY(-10px) rotate(0deg)', opacity: '1' },
-          '100%': { transform: 'translateY(100vh) rotate(720deg)', opacity: '0' },
-        },
         'float': {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-6px)' },
@@ -64,7 +60,6 @@ export default {
         'slide-up': 'slide-up 0.4s ease-out both',
         'shimmer': 'shimmer 2s linear infinite',
         'glow-pulse': 'glow-pulse 3s ease-in-out infinite',
-        'confetti-fall': 'confetti-fall 1.5s ease-out forwards',
         'float': 'float 3s ease-in-out infinite',
       },
     },
