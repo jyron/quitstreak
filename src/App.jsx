@@ -8,7 +8,6 @@ import Milestones from './pages/Milestones'
 import Settings from './pages/Settings'
 import PartnerSetup from './pages/PartnerSetup'
 import PartnerDashboard from './pages/PartnerDashboard'
-import Onboarding from './pages/Onboarding'
 
 export default function App() {
   return (
@@ -16,7 +15,6 @@ export default function App() {
       <Route path="/" element={<Landing />} />
       <Route path="/partner/:shareCode" element={<PartnerDashboard />} />
 
-      <Route path="/app/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
       <Route path="/app" element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index element={<Dashboard />} />
         <Route path="check-in" element={<CheckIn />} />

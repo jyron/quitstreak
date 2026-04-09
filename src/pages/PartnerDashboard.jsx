@@ -195,19 +195,24 @@ export default function PartnerDashboard() {
 
         {/* Sign-in banner — unauthenticated visitors */}
         {!user && (
-          <div className="bg-primary/5 border border-primary/10 rounded-xl px-5 py-4 mb-6">
-            <p className="font-serif text-lg font-semibold text-text">
+          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 mb-6 text-center animate-fade-in">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Heart className="w-7 h-7 text-primary/60" />
+            </div>
+            <h2 className="font-serif text-xl font-bold text-text">
               {displayName} is sharing their journey with you
-            </p>
-            <p className="mt-1 text-sm text-text-secondary">
-              Sign in to send encouragement and check-in reminders whenever you want.
+            </h2>
+            <p className="mt-2 text-sm text-text-secondary leading-relaxed">
+              Create a free account to send encouragement, see their daily moods, and follow their progress.
             </p>
             <Link
               to={`/?ref=${shareCode}`}
-              className="mt-3 inline-block text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              className="mt-5 flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
             >
-              Sign in to support {displayName} &rarr;
+              <Heart className="w-4 h-4" />
+              Follow {displayName}'s journey
             </Link>
+            <p className="mt-3 text-xs text-text-secondary">Free to join. No credit card required.</p>
           </div>
         )}
 

@@ -1,416 +1,1006 @@
-import { useState, useEffect, useRef } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Wine, Cigarette, CloudFog, Heart, Check, Eye, EyeOff, ArrowRight, Bell, UserCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
-import { Calendar, ClipboardCheck, Users, Check, Eye, EyeOff } from 'lucide-react'
+import MoodSelector from '../components/MoodSelector'
+import CravingScale from '../components/CravingScale'
 
-function useReveal() {
-  const ref = useRef(null)
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect() } },
-      { threshold: 0.1 }
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-  return [ref, visible]
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function formatDateForInput(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
-const steps = [
+function friendlyError(msg) {
+  if (msg.includes('Invalid login credentials')) return 'Wrong email or password.'
+  if (msg.includes('User already registered')) return 'An account with this email already exists. Try signing in.'
+  if (msg.includes('Password should be at least')) return 'Password must be at least 6 characters.'
+  if (msg.includes('rate limit') || msg.includes('Rate limit')) return 'Too many attempts. Please wait and try again.'
+  return msg
+}
+
+// ── Constants ──────────────────────────────────────────────────────────────
+
+const QUIT_TYPES = [
+  { value: 'drinking', label: 'Drinking', icon: Wine, adjective: 'alcohol-free' },
+  { value: 'smoking', label: 'Smoking', icon: Cigarette, adjective: 'smoke-free' },
+  { value: 'vaping', label: 'Vaping', icon: CloudFog, adjective: 'vape-free' },
+]
+
+const PAIN_POINTS = [
+  { key: 'evening', label: 'Evening cravings', emoji: '🌙' },
+  { key: 'social', label: 'Social situations', emoji: '👥' },
+  { key: 'stress', label: 'Stress and anxiety', emoji: '😤' },
+  { key: 'boredom', label: 'Boredom', emoji: '😑' },
+  { key: 'peers', label: 'People around me still do it', emoji: '🤝' },
+  { key: 'accountability', label: 'No real accountability', emoji: '🏃' },
+]
+
+const SUPPORTER_TYPES = [
+  { value: 'partner', label: 'My partner', emoji: '💑' },
+  { value: 'parent', label: 'A parent', emoji: '👪' },
+  { value: 'friend', label: 'My best friend', emoji: '🤝' },
+  { value: 'sponsor', label: 'My sponsor', emoji: '🧑‍⚕️' },
+  { value: 'later', label: "I'll share later", emoji: '🤫' },
+]
+
+const SUPPORTER_LABELS = {
+  partner: 'your partner',
+  parent: 'a parent',
+  friend: 'your best friend',
+  sponsor: 'your sponsor',
+  later: 'someone you trust',
+}
+
+const TESTIMONIALS = [
   {
-    icon: Calendar,
-    title: 'Set your quit date',
-    description: 'Pick your substance, set the day, and your streak starts counting immediately.',
+    quote: "I quit drinking 4 months ago. The streak counter is the first thing I check every morning. Knowing my sister can see it means I'm accountable every single day — not just when it's convenient.",
+    name: 'Sarah M.',
+    context: '127 days alcohol-free',
   },
   {
-    icon: ClipboardCheck,
-    title: 'Track daily',
-    description: 'Quick 30-second check-ins: mood, cravings, and a note if you want.',
+    quote: "My wife set up the supporter view without me even asking. Seeing her check in every morning made me not want to let her down. 87 days and counting.",
+    name: 'Marcus T.',
+    context: '87 days smoke-free',
   },
   {
-    icon: Users,
-    title: 'Share with someone who cares',
-    description: 'Give a loved one a live dashboard of your progress.',
-    tag: 'Subscription',
+    quote: "I've tried three other apps. None of them had this. My mom sees my mood every day — she texts about specific days now instead of just asking 'how are you doing?' That changes everything.",
+    name: 'Priya K.',
+    context: '3 months vape-free',
   },
 ]
 
-const testimonials = [
-  {
-    quote: 'My wife can see my streak. That\'s more accountability than any app ever gave me.',
-    name: 'Jake',
-    context: '90 days smoke-free',
-  },
-  {
-    quote: 'I bought this for my brother. He\'s 47 days in. I check every morning.',
-    name: 'Maria',
-    context: 'Support partner',
-  },
-  {
-    quote: 'The daily check-in takes 10 seconds but it\'s the thing that keeps me honest.',
-    name: 'David',
-    context: '6 months alcohol-free',
-  },
-]
+const PAIN_SOLUTIONS = {
+  evening: { pain: 'Evening cravings hit hardest', solution: "Log a 30-second check-in. Your supporter sees it and can nudge you through." },
+  social: { pain: 'Social pressure is real', solution: "Your streak is always visible — to you and the person rooting for you hardest." },
+  stress: { pain: 'Stress spirals into a slip', solution: "Log your mood daily. Patterns emerge. Your supporter can spot the tough days before you do." },
+  boredom: { pain: 'Boredom leads you back', solution: "Your streak counter ticks every second. Something to look at instead of reaching for the habit." },
+  peers: { pain: 'People around you still do it', solution: "You've got someone in your corner who doesn't. That pull matters more." },
+  accountability: { pain: 'Nobody holds you to it', solution: "Now someone can see your streak, your mood, your check-ins. Every single day." },
+}
 
-const freeFeatures = [
-  'Streak tracking with live counter',
-  'Daily mood & craving check-ins',
-  'Milestone achievements',
-  'Push notification reminders',
-]
+const TOTAL_SCREENS = 13
 
-const plusFeatures = [
-  'Everything in Free',
-  'Partner Support Dashboard',
-  'Partner milestone alerts',
-  'Encouragement messages',
-  'Priority support',
-]
+// ── Sub-components ─────────────────────────────────────────────────────────
 
-export default function Landing() {
-  const { user, loading } = useAuth()
-  const [searchParams] = useSearchParams()
-  const ref = searchParams.get('ref')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [mode, setMode] = useState('signup')
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState(null)
-  const [submitting, setSubmitting] = useState(false)
+function ProgressBar({ screen }) {
+  if (screen <= 0 || screen >= 14) return null
+  const pct = Math.round((screen / TOTAL_SCREENS) * 100)
+  return (
+    <div className="w-full h-1 bg-gray-100 rounded-full overflow-hidden mb-8">
+      <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+    </div>
+  )
+}
 
-  const [howRef, howVisible] = useReveal()
-  const [partnerRef, partnerVisible] = useReveal()
-  const [testimonialsRef, testimonialsVisible] = useReveal()
-  const [pricingRef, pricingVisible] = useReveal()
+function ScreenWrap({ animating, children }) {
+  return (
+    <div className={`transition-all duration-200 ${animating ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'}`}>
+      {children}
+    </div>
+  )
+}
 
+function MockStreakCounter() {
+  const [secs, setSecs] = useState(0)
   useEffect(() => {
-    if (ref) {
-      localStorage.setItem('pendingShareCode', ref)
-    }
-  }, [ref])
+    const id = setInterval(() => setSecs(s => s + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const h = String(Math.floor(secs / 3600)).padStart(2, '0')
+  const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0')
+  const s = String(secs % 60).padStart(2, '0')
+  return (
+    <div className="text-center py-8 select-none">
+      <div className="relative inline-flex items-center justify-center">
+        <div className="absolute w-48 h-48 rounded-full bg-primary/5 shadow-[0_0_30px_rgba(45,106,106,0.15)]" />
+        <div className="absolute w-40 h-40 rounded-full border-2 border-primary/15" />
+        <div className="relative font-serif text-text z-10">
+          <span className="text-8xl font-bold leading-none">1</span>
+          <p className="text-lg text-text-secondary font-medium mt-2">day free</p>
+        </div>
+      </div>
+      <div className="flex justify-center gap-6 mt-6">
+        {[['hr', h], ['min', m], ['sec', s]].map(([unit, val]) => (
+          <div key={unit} className="flex flex-col items-center">
+            <span className="font-serif text-2xl font-bold tabular-nums text-text">{val}</span>
+            <span className="text-[10px] text-text-secondary font-medium uppercase tracking-wider mt-0.5">{unit}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
-  if (!loading && user) {
-    if (ref) {
-      return <Navigate to={`/partner/${ref}`} replace />
-    }
-    return <Navigate to="/app" replace />
-  }
+function ProcessingScreen({ onDone }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2200)
+    return () => clearTimeout(t)
+  }, [onDone])
+  return (
+    <div className="animate-fade-in text-center pt-16">
+      <div className="loading-spinner mx-auto mb-8" style={{ width: 40, height: 40, borderWidth: 3 }} />
+      <h2 className="font-serif text-2xl font-bold text-text">Building your quit plan...</h2>
+      <p className="mt-3 text-text-secondary">Tailoring everything to what you told us.</p>
+    </div>
+  )
+}
 
-  function friendlyError(msg) {
-    if (msg.includes('Invalid login credentials')) return 'Wrong email or password.'
-    if (msg.includes('User already registered')) return 'An account with this email already exists. Try signing in.'
-    if (msg.includes('Password should be at least')) return 'Password must be at least 6 characters.'
-    if (msg.includes('rate limit') || msg.includes('Rate limit')) return 'Too many attempts. Please wait and try again.'
-    return msg
-  }
+function DemoStepDots({ step }) {
+  return (
+    <div className="flex items-center gap-2 mb-6">
+      {[1, 2, 3].map(i => (
+        <div
+          key={i}
+          className={`rounded-full transition-all duration-300 ${
+            i === step ? 'w-5 h-2.5 bg-primary' : i < step ? 'w-2.5 h-2.5 bg-primary/40' : 'w-2.5 h-2.5 bg-gray-200'
+          }`}
+        />
+      ))}
+      <span className="ml-1 text-xs text-text-secondary font-medium uppercase tracking-wider">First check-in</span>
+    </div>
+  )
+}
 
-  async function handleSubmit(e) {
-    e.preventDefault()
+function MoodPreview({ mood, craving }) {
+  const moodEmojis = { 1: '😞', 2: '😕', 3: '😐', 4: '🙂', 5: '😊' }
+  const moodLabels = { 1: 'Rough', 2: 'Low', 3: 'Okay', 4: 'Good', 5: 'Great' }
+  const cravingLabels = { 1: 'No cravings', 2: 'Mild cravings', 3: 'Moderate cravings', 4: 'Strong cravings', 5: 'Overwhelming cravings' }
+  return (
+    <div className="flex items-center gap-3 py-1">
+      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl flex-shrink-0">
+        {moodEmojis[mood] ?? '😐'}
+      </div>
+      <div>
+        <p className="text-sm font-medium text-text">Feeling {(moodLabels[mood] ?? 'okay').toLowerCase()}</p>
+        <p className="text-xs text-text-secondary">{cravingLabels[craving] ?? 'Cravings logged'}</p>
+      </div>
+    </div>
+  )
+}
+
+function BackBtn({ onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
+    >
+      Back
+    </button>
+  )
+}
+
+function PaywallScreen({ session, onSkip, adjective, supporterLabel }) {
+  const [plan, setPlan] = useState('yearly')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleCheckout() {
+    setLoading(true)
     setError(null)
-    setSubmitting(true)
-
-    const { error } = mode === 'signup'
-      ? await supabase.auth.signUp({ email, password })
-      : await supabase.auth.signInWithPassword({ email, password })
-
-    setSubmitting(false)
-
-    if (error) {
-      const msg = error.message
-      setError(friendlyError(msg))
-      if (msg.includes('User already registered')) {
-        setMode('signin')
-      }
+    try {
+      const res = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ plan, successPath: '/app' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Checkout failed')
+      window.location.href = data.url
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
     }
-  }
-
-  function scrollToSignup() {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-2xl mx-auto px-6 pt-20 pb-12">
-        {/* Hero */}
-        <div className="max-w-lg">
-          <h1 className="font-serif text-4xl font-bold text-text leading-tight animate-fade-in">
-            Quit drinking. Quit smoking. Quit vaping.
-          </h1>
-          <p className="mt-2 font-serif text-xl text-primary font-semibold animate-fade-in" style={{ animationDelay: '0.15s' }}>
-            And prove it to someone who cares.
-          </p>
-          <p className="mt-4 text-text-secondary leading-relaxed animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            Track your streak, log your journey, and share a live dashboard with the person rooting for you hardest.
-          </p>
+    <div className="animate-fade-in">
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mx-auto mb-4">
+          <Heart className="w-8 h-8 text-secondary" />
         </div>
-
-        {/* Sign in form */}
-        <div className="mt-10 max-w-lg animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
-          {ref && (
-            <div className="mb-4 bg-primary/5 border border-primary/10 rounded-xl px-4 py-3">
-              <p className="text-sm text-primary font-medium">
-                You're signing in to follow someone's journey.
-              </p>
-              <p className="text-xs text-text-secondary mt-0.5">
-                You'll be taken back to their progress page after signing in.
-              </p>
-            </div>
-          )}
-          <form onSubmit={handleSubmit}>
-              <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
-                {mode === 'signup' ? 'Create your account' : 'Welcome back'}
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-              />
-              <div className="relative mt-3">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password (6+ characters)"
-                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-text-secondary"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="mt-4 w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                {mode === 'signup'
-                  ? (submitting ? 'Creating account...' : ref ? 'Create account' : 'Start free — no credit card')
-                  : (submitting ? 'Signing in...' : 'Sign in')}
-              </button>
-              {error && (
-                <p className="mt-3 text-sm text-danger">{error}</p>
-              )}
-              <p className="mt-3 text-xs text-text-secondary text-center">
-                {mode === 'signup' ? (
-                  <>Already have an account?{' '}
-                    <button type="button" onClick={() => { setMode('signin'); setError(null) }} className="text-primary font-medium">
-                      Sign in
-                    </button>
-                  </>
-                ) : (
-                  <>Don't have an account?{' '}
-                    <button type="button" onClick={() => { setMode('signup'); setError(null) }} className="text-primary font-medium">
-                      Sign up free
-                    </button>
-                  </>
-                )}
-              </p>
-            </form>
-        </div>
-
-        {/* How It Works */}
-        <section ref={howRef} className={`mt-24 transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <h2 className="font-serif text-2xl font-bold text-text">How it works</h2>
-          <div className="mt-8 space-y-6">
-            {steps.map((step, i) => (
-              <div
-                key={i}
-                className={`flex gap-5 items-start transition-all duration-500 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}
-                style={{ transitionDelay: howVisible ? `${i * 120}ms` : '0ms' }}
-              >
-                <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <step.icon className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-text-secondary uppercase tracking-wider">Step {i + 1}</span>
-                    {step.tag && (
-                      <span className="text-xs font-medium text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">{step.tag}</span>
-                    )}
-                  </div>
-                  <h3 className="mt-1 font-serif text-lg font-semibold text-text">{step.title}</h3>
-                  <p className="mt-1 text-text-secondary text-sm leading-relaxed">{step.description}</p>
-                </div>
-              </div>
-            ))}
+        <h1 className="font-serif text-3xl font-bold text-text">
+          Share your {adjective} journey.
+        </h1>
+        <p className="mt-3 text-text-secondary leading-relaxed">
+          Give {supporterLabel} a live view of your streak, moods, and milestones — and let them send encouragement whenever you need it.
+        </p>
+      </div>
+      <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 mb-6">
+        <p className="text-text leading-relaxed italic">
+          "My wife can see my streak. That's more accountability than any app ever gave me."
+        </p>
+        <p className="mt-3 text-sm text-text-secondary">— Marcus T., 87 days smoke-free</p>
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <button
+          onClick={() => setPlan('monthly')}
+          className={`py-4 px-3 rounded-xl border-2 text-center transition-all ${plan === 'monthly' ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}
+        >
+          <p className="font-serif text-xl font-bold text-text">$5.99</p>
+          <p className="text-xs text-text-secondary mt-1">per month</p>
+        </button>
+        <button
+          onClick={() => setPlan('yearly')}
+          className={`py-4 px-3 rounded-xl border-2 text-center transition-all relative ${plan === 'yearly' ? 'border-primary bg-primary/5' : 'border-gray-100 hover:border-gray-200'}`}
+        >
+          <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-secondary text-white text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap">
+            Save 44%
           </div>
-        </section>
+          <p className="font-serif text-xl font-bold text-text">$39.99</p>
+          <p className="text-xs text-text-secondary mt-1">per year</p>
+        </button>
+      </div>
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className="w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+      >
+        {loading ? 'Redirecting...' : 'Start sharing my journey'}
+      </button>
+      {error && <p className="mt-2 text-sm text-danger text-center">{error}</p>}
+      <button
+        onClick={onSkip}
+        className="mt-3 w-full py-2 text-sm text-text-secondary hover:text-text transition-colors"
+      >
+        Continue with free plan
+      </button>
+    </div>
+  )
+}
 
-        {/* Partner View Preview */}
-        <section ref={partnerRef} className={`mt-24 transition-all duration-700 ${partnerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <h2 className="font-serif text-2xl font-bold text-text text-center">
-            Your mom. Your partner. Your best friend. Your sponsor.
-          </h2>
-          <p className="mt-2 text-text-secondary text-center">
-            Give them peace of mind.
-          </p>
-          <div className={`mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-1000 ${partnerVisible ? 'animate-float' : ''}`}>
-            {/* Mock partner dashboard */}
-            <div className="bg-primary/5 px-6 py-4 border-b border-gray-100">
-              <p className="text-sm text-text-secondary">Partner Dashboard</p>
-              <p className="font-serif text-lg font-semibold text-text mt-1">Alex's Journey</p>
-            </div>
-            <div className="px-6 py-6 space-y-5">
-              {/* Mock streak */}
-              <div className="text-center py-4">
-                <p className="text-text-secondary text-sm">has been alcohol-free for</p>
-                <p className="font-serif text-4xl font-bold text-primary mt-1">47 days</p>
-                <p className="text-text-secondary text-sm mt-1">3 hours 22 minutes</p>
-              </div>
-              {/* Mock mood row */}
-              <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">This week's mood</p>
-                <div className="flex justify-between">
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, i) => (
-                    <div key={day} className="flex flex-col items-center gap-1.5">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                        i < 5
-                          ? [
-                              'bg-secondary/20 text-secondary',
-                              'bg-primary/20 text-primary',
-                              'bg-primary/20 text-primary',
-                              'bg-secondary/20 text-secondary',
-                              'bg-primary/20 text-primary',
-                            ][i]
-                          : 'bg-gray-100 text-gray-300'
-                      }`}>
-                        {i < 5 ? [':|', ':)', ':)', ':|', ':)'][i] : '?'}
-                      </div>
-                      <span className="text-xs text-text-secondary">{day}</span>
+// ── Main Component ─────────────────────────────────────────────────────────
+
+export default function Landing() {
+  const { user, loading: authLoading } = useAuth()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const ref = searchParams.get('ref') || localStorage.getItem('pendingShareCode')
+
+  const [mode, setMode] = useState(ref ? 'supporter' : 'quitter')
+  const [screen, setScreen] = useState(0)
+  const [animating, setAnimating] = useState(false)
+
+  // Quitter answers
+  const [quitType, setQuitType] = useState(null)
+  const [painPoints, setPainPoints] = useState([])
+  const [supporterType, setSupporterType] = useState(null)
+  const [demoMood, setDemoMood] = useState(null)
+  const [demoCraving, setDemoCraving] = useState(null)
+  const [quitDate, setQuitDate] = useState(formatDateForInput(new Date()))
+  const [displayName, setDisplayName] = useState('')
+
+  // Supporter answers
+  const [supporterName, setSupporterName] = useState('')
+
+  // Auth
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [authMode, setAuthMode] = useState('signup')
+  const [submitting, setSubmitting] = useState(false)
+  const [authError, setAuthError] = useState(null)
+  const [signedUpSession, setSignedUpSession] = useState(null)
+
+  useEffect(() => {
+    const r = searchParams.get('ref')
+    if (r) localStorage.setItem('pendingShareCode', r)
+  }, [])
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="loading-spinner" />
+      </div>
+    )
+  }
+
+  if (!authLoading && user) {
+    if (ref) return <Navigate to={`/partner/${ref}`} replace />
+    return <Navigate to="/app" replace />
+  }
+
+  function goTo(n) {
+    setAnimating(true)
+    setTimeout(() => {
+      setScreen(n)
+      setAnimating(false)
+      window.scrollTo(0, 0)
+    }, 200)
+  }
+  function next() { goTo(screen + 1) }
+  function back() { goTo(screen - 1) }
+
+  function togglePainPoint(key) {
+    setPainPoints(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+  }
+
+  async function requestNotifications() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      await Notification.requestPermission()
+    }
+    next()
+  }
+
+  async function handleSignUp(isSupporter) {
+    setSubmitting(true)
+    setAuthError(null)
+
+    if (authMode === 'signin') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      setSubmitting(false)
+      if (error) { setAuthError(friendlyError(error.message)); return }
+      localStorage.removeItem('pendingShareCode')
+      navigate(ref ? `/partner/${ref}` : '/app', { replace: true })
+      return
+    }
+
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) {
+      setSubmitting(false)
+      setAuthError(friendlyError(error.message))
+      if (error.message.includes('User already registered')) setAuthMode('signin')
+      return
+    }
+
+    const userId = data.user.id
+
+    if (isSupporter) {
+      const { error: pe } = await supabase.from('profiles').upsert({
+        id: userId,
+        account_type: 'supporter',
+        display_name: supporterName.trim() || null,
+      }, { onConflict: 'id' })
+      setSubmitting(false)
+      if (pe) { setAuthError(pe.message); return }
+      localStorage.removeItem('pendingShareCode')
+      navigate(ref ? `/partner/${ref}` : '/app', { replace: true })
+      return
+    }
+
+    // Quitter profile
+    const today = formatDateForInput(new Date())
+    const quitTimestamp = quitDate === today
+      ? new Date().toISOString()
+      : new Date(quitDate + 'T00:00:00').toISOString()
+
+    const { error: pe } = await supabase.from('profiles').upsert({
+      id: userId,
+      account_type: 'addict',
+      display_name: displayName.trim() || null,
+      quit_type: quitType,
+      quit_date: quitTimestamp,
+    }, { onConflict: 'id' })
+
+    setSubmitting(false)
+    if (pe) { setAuthError(pe.message); return }
+
+    setSignedUpSession(data.session)
+    sessionStorage.setItem('showConfetti', '1')
+    goTo(14)
+  }
+
+  const isToday = quitDate === formatDateForInput(new Date())
+  const adjective = QUIT_TYPES.find(q => q.value === quitType)?.adjective ?? 'free'
+  const supporterLabel = SUPPORTER_LABELS[supporterType] ?? 'someone you trust'
+
+  const solutions = painPoints.length > 0
+    ? painPoints.slice(0, 4).map(k => PAIN_SOLUTIONS[k]).filter(Boolean)
+    : [PAIN_SOLUTIONS.accountability, PAIN_SOLUTIONS.evening, PAIN_SOLUTIONS.stress]
+
+  // Shared auth form markup
+  function renderAuthForm(isSupporter) {
+    return (
+      <div className="mt-6 space-y-3">
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          autoComplete="email"
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+        />
+        <div className="relative">
+          <input
+            type={showPassword ? 'text' : 'password'}
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder="Password (6+ characters)"
+            autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+            className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+          />
+          <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-text-secondary">
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+        {authError && <p className="text-sm text-danger">{authError}</p>}
+        <button
+          onClick={() => handleSignUp(isSupporter)}
+          disabled={submitting || !email || !password}
+          className="w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {submitting
+            ? (authMode === 'signup' ? 'Creating account...' : 'Signing in...')
+            : authMode === 'signup' ? (isSupporter ? 'Create my account' : 'Start free') : 'Sign in'}
+        </button>
+        <p className="text-sm text-text-secondary text-center">
+          {authMode === 'signup' ? (
+            <>Already have an account?{' '}
+              <button onClick={() => { setAuthMode('signin'); setAuthError(null) }} className="text-primary font-medium">Sign in</button>
+            </>
+          ) : (
+            <>Don't have an account?{' '}
+              <button onClick={() => { setAuthMode('signup'); setAuthError(null) }} className="text-primary font-medium">Sign up free</button>
+            </>
+          )}
+        </p>
+      </div>
+    )
+  }
+
+  // ── SUPPORTER MODE ────────────────────────────────────────────────────────
+  if (mode === 'supporter') {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <div className="flex-1 max-w-lg mx-auto px-6 pt-12 pb-24 w-full">
+          <ScreenWrap animating={animating}>
+
+            {screen === 0 && (
+              <div className="animate-fade-in">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                  <Heart size={36} className="text-primary/50" />
+                </div>
+                <h1 className="font-serif text-3xl font-bold text-text text-center">
+                  You're here to help someone quit.
+                </h1>
+                <p className="mt-3 text-text-secondary leading-relaxed text-center">
+                  That matters more than you know. Create a free account to follow their progress, see their daily moods, and send encouragement whenever they need it.
+                </p>
+                <div className="mt-8 space-y-3">
+                  {[
+                    ['📊', 'See their live streak counter and mood history'],
+                    ['💌', 'Send a nudge any time — they see it instantly'],
+                    ['🎯', 'Get notified when they hit a milestone'],
+                  ].map(([emoji, text]) => (
+                    <div key={text} className="flex items-center gap-3 py-3 px-4 bg-white rounded-xl border border-gray-100">
+                      <span className="text-xl">{emoji}</span>
+                      <p className="text-sm text-text font-medium">{text}</p>
                     </div>
                   ))}
                 </div>
+                <button
+                  onClick={() => goTo(1)}
+                  className="mt-8 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+                >
+                  Set up my supporter account
+                </button>
+                <button
+                  onClick={() => { setMode('quitter'); goTo(0) }}
+                  className="mt-3 w-full py-2 text-sm text-text-secondary hover:text-text transition-colors"
+                >
+                  I'm also tracking my own journey
+                </button>
               </div>
-              {/* Mock milestone */}
-              <div className="bg-secondary/5 rounded-xl px-4 py-3 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center text-secondary text-sm font-bold">
-                  !
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text">2 months reached</p>
-                  <p className="text-xs text-text-secondary">3 days ago</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <p className="mt-4 text-center text-sm text-text-secondary">
-            Recovery is easier when someone's in your corner.
-          </p>
-        </section>
+            )}
 
-        {/* Social Proof */}
-        <section ref={testimonialsRef} className={`mt-24 transition-all duration-700 ${testimonialsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <h2 className="font-serif text-2xl font-bold text-text text-center">
-            People are quitting for good
-          </h2>
-          <div className="mt-8 space-y-4">
-            {testimonials.map((t, i) => (
-              <div
-                key={i}
-                className={`bg-white rounded-xl p-5 shadow-sm transition-all duration-500 ${testimonialsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}
-                style={{ transitionDelay: testimonialsVisible ? `${i * 150}ms` : '0ms' }}
-              >
-                <p className="text-text leading-relaxed">"{t.quote}"</p>
-                <p className="mt-3 text-sm text-text-secondary">
-                  — {t.name}, {t.context}
+            {screen === 1 && (
+              <div className="animate-fade-in">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                  <UserCircle size={36} className="text-primary/50" />
+                </div>
+                <h1 className="font-serif text-3xl font-bold text-text">What should we call you?</h1>
+                <p className="mt-3 text-text-secondary">So they know who's cheering them on.</p>
+                <input
+                  type="text"
+                  value={supporterName}
+                  onChange={e => setSupporterName(e.target.value)}
+                  placeholder="e.g. Mom, Jake, Coach Sarah"
+                  className="mt-6 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-lg"
+                  autoFocus
+                />
+                <div className="flex gap-3 mt-8">
+                  <BackBtn onClick={() => goTo(0)} />
+                  <button
+                    onClick={() => goTo(2)}
+                    disabled={!supporterName.trim()}
+                    className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {screen === 2 && (
+              <div className="animate-fade-in">
+                <h1 className="font-serif text-3xl font-bold text-text">
+                  {authMode === 'signup' ? 'Create your account' : 'Welcome back'}
+                </h1>
+                <p className="mt-3 text-text-secondary">
+                  {authMode === 'signup' ? 'Free to follow and encourage.' : 'Sign in to follow their progress.'}
+                </p>
+                {renderAuthForm(true)}
+                <div className="mt-4">
+                  <BackBtn onClick={() => goTo(1)} />
+                </div>
+              </div>
+            )}
+
+          </ScreenWrap>
+        </div>
+      </div>
+    )
+  }
+
+  // ── QUITTER MODE ──────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 max-w-lg mx-auto px-6 pt-8 pb-24 w-full">
+        <ProgressBar screen={screen} />
+
+        <ScreenWrap animating={animating}>
+
+          {/* 0: WELCOME */}
+          {screen === 0 && (
+            <div className="animate-fade-in pt-2">
+              <div className="flex justify-between items-center mb-2">
+                <p className="font-serif text-sm text-primary font-semibold tracking-wider">QuitStreak</p>
+                <button
+                  onClick={() => { goTo(13); setAuthMode('signin') }}
+                  className="text-sm text-text-secondary hover:text-primary transition-colors"
+                >
+                  Sign in
+                </button>
+              </div>
+              <MockStreakCounter />
+              <div className="text-center mt-4">
+                <h1 className="font-serif text-3xl font-bold text-text">Your streak starts today.</h1>
+                <p className="mt-3 text-text-secondary leading-relaxed max-w-sm mx-auto">
+                  The live counter that proves you're doing it — and shares your progress with someone who cares.
                 </p>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Pricing */}
-        <section ref={pricingRef} className={`mt-24 transition-all duration-700 ${pricingVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          <h2 className="font-serif text-2xl font-bold text-text text-center">
-            Simple pricing
-          </h2>
-          <p className="mt-2 text-text-secondary text-center">
-            Start free. Upgrade when you're ready to share your journey.
-          </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {/* Free tier */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <h3 className="font-serif text-lg font-semibold text-text">Free</h3>
-              <p className="mt-1 text-text-secondary text-sm">Everything you need to track your streak.</p>
-              <p className="mt-4 font-serif text-3xl font-bold text-text">$0</p>
-              <ul className="mt-5 space-y-2.5">
-                {freeFeatures.map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                    <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
               <button
-                onClick={scrollToSignup}
-                className="mt-6 w-full py-2.5 px-4 rounded-xl border-2 border-primary text-primary font-medium hover:bg-primary/5 transition-colors"
+                onClick={next}
+                className="mt-8 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors active:scale-[0.98]"
               >
-                Start free
+                Start my journey
+              </button>
+              <button
+                onClick={() => setMode('supporter')}
+                className="mt-3 w-full py-2 text-sm text-text-secondary hover:text-text transition-colors flex items-center justify-center gap-1"
+              >
+                I'm here to support someone <ArrowRight size={14} />
+              </button>
+              <p className="mt-10 text-center text-xs text-text-secondary leading-relaxed px-4">
+                If you're struggling, please reach out to SAMHSA's helpline:{' '}
+                <a href="tel:1-800-662-4357" className="underline">1-800-662-4357</a>
+              </p>
+            </div>
+          )}
+
+          {/* 1: WHAT ARE YOU QUITTING? */}
+          {screen === 1 && (
+            <div className="animate-fade-in">
+              <h1 className="font-serif text-3xl font-bold text-text">What are you quitting?</h1>
+              <div className="mt-8 flex flex-col gap-4">
+                {QUIT_TYPES.map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    onClick={() => setQuitType(value)}
+                    className={`flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
+                      quitType === value ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'
+                    }`}
+                  >
+                    <Icon size={28} className={quitType === value ? 'text-primary' : 'text-text-secondary'} />
+                    <span className={`text-lg font-medium ${quitType === value ? 'text-primary' : 'text-text'}`}>{label}</span>
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={next}
+                disabled={!quitType}
+                className="mt-8 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+              >
+                Continue
               </button>
             </div>
-            {/* Plus tier */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-primary relative hover:shadow-md hover:-translate-y-1 transition-all duration-300">
-              <div className="absolute -top-3 left-6 bg-secondary text-white text-xs font-medium px-3 py-1 rounded-full">
-                Save 44% annually
+          )}
+
+          {/* 2: PAIN POINTS */}
+          {screen === 2 && (
+            <div className="animate-fade-in">
+              <h1 className="font-serif text-3xl font-bold text-text">What makes it hardest?</h1>
+              <p className="mt-2 text-text-secondary">Select everything that applies to you.</p>
+              <div className="mt-6 flex flex-col gap-3">
+                {PAIN_POINTS.map(({ key, label, emoji }) => {
+                  const sel = painPoints.includes(key)
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => togglePainPoint(key)}
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
+                        sel ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'
+                      }`}
+                    >
+                      <span className="text-2xl w-8 text-center flex-shrink-0">{emoji}</span>
+                      <span className={`font-medium flex-1 ${sel ? 'text-primary' : 'text-text'}`}>{label}</span>
+                      {sel && <Check size={18} className="text-primary flex-shrink-0" />}
+                    </button>
+                  )
+                })}
               </div>
-              <h3 className="font-serif text-lg font-semibold text-text">QuitStreak+</h3>
-              <p className="mt-1 text-text-secondary text-sm">Share your progress with someone who cares.</p>
-              <div className="mt-4 flex items-baseline gap-2">
-                <p className="font-serif text-3xl font-bold text-text">$5.99</p>
-                <span className="text-text-secondary text-sm">/month</span>
+              <div className="flex gap-3 mt-8">
+                <BackBtn onClick={back} />
+                <button
+                  onClick={next}
+                  className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+                >
+                  {painPoints.length > 0 ? 'Continue' : 'Skip'}
+                </button>
               </div>
-              <p className="text-xs text-text-secondary mt-1">or $39.99/year</p>
-              <ul className="mt-5 space-y-2.5">
-                {plusFeatures.map((f, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-text-secondary">
-                    <Check className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                    {f}
-                  </li>
+            </div>
+          )}
+
+          {/* 3: SOCIAL PROOF */}
+          {screen === 3 && (
+            <div className="animate-fade-in">
+              <h1 className="font-serif text-3xl font-bold text-text">You're not alone in this.</h1>
+              <p className="mt-2 text-text-secondary">People just like you are making it work.</p>
+              <div className="mt-8 space-y-4">
+                {TESTIMONIALS.map((t, i) => (
+                  <div key={i} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <p className="text-text leading-relaxed">"{t.quote}"</p>
+                    <p className="mt-3 text-sm text-text-secondary">— {t.name}, {t.context}</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
+              <div className="flex gap-3 mt-8">
+                <BackBtn onClick={back} />
+                <button onClick={next} className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors">
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 4: PERSONALIZED SOLUTION */}
+          {screen === 4 && (
+            <div className="animate-fade-in">
+              <h1 className="font-serif text-3xl font-bold text-text">Here's how QuitStreak helps.</h1>
+              <p className="mt-2 text-text-secondary">Built for exactly what you're up against.</p>
+              <div className="mt-8 space-y-4">
+                {solutions.map((s, i) => (
+                  <div key={i} className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
+                    <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">{s.pain}</p>
+                    <p className="mt-2 font-medium text-text leading-relaxed">{s.solution}</p>
+                  </div>
+                ))}
+                <div className="bg-primary/5 rounded-xl p-5 border border-primary/10">
+                  <p className="text-xs font-medium text-text-secondary uppercase tracking-wider">The simplest thing</p>
+                  <p className="mt-2 font-medium text-text leading-relaxed">
+                    Your streak counter ticks every second — days, hours, minutes. It's hard to throw that away.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-8">
+                <BackBtn onClick={back} />
+                <button onClick={next} className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors">
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 5: WHO'LL SUPPORT YOU? */}
+          {screen === 5 && (
+            <div className="animate-fade-in">
+              <h1 className="font-serif text-3xl font-bold text-text">Who would you want in your corner?</h1>
+              <p className="mt-2 text-text-secondary">You can share your live progress with anyone who cares.</p>
+              <div className="mt-8 flex flex-col gap-3">
+                {SUPPORTER_TYPES.map(({ value, label, emoji }) => (
+                  <button
+                    key={value}
+                    onClick={() => setSupporterType(value)}
+                    className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all text-left ${
+                      supporterType === value ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'
+                    }`}
+                  >
+                    <span className="text-2xl w-8 text-center flex-shrink-0">{emoji}</span>
+                    <span className={`font-medium ${supporterType === value ? 'text-primary' : 'text-text'}`}>{label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3 mt-8">
+                <BackBtn onClick={back} />
+                <button
+                  onClick={next}
+                  disabled={!supporterType}
+                  className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 6: NOTIFICATION PRIMING */}
+          {screen === 6 && (
+            <div className="animate-fade-in">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                <Bell size={36} className="text-primary/50" />
+              </div>
+              <h1 className="font-serif text-3xl font-bold text-text text-center">Don't battle cravings alone.</h1>
+              <p className="mt-3 text-text-secondary leading-relaxed text-center">
+                Let us send a daily reminder to log your check-in. 30 seconds. Your supporters see it.
+              </p>
+              <div className="mt-8 space-y-3">
+                {[
+                  ['📊', 'Daily streak update so you see it first'],
+                  ['⏰', 'Evening reminder when cravings peak'],
+                  ['🎯', 'Alerts when you hit a milestone'],
+                ].map(([emoji, text]) => (
+                  <div key={text} className="flex items-center gap-3 py-3 px-4 bg-white rounded-xl border border-gray-100">
+                    <span className="text-xl">{emoji}</span>
+                    <p className="text-sm text-text font-medium">{text}</p>
+                  </div>
+                ))}
+              </div>
               <button
-                onClick={scrollToSignup}
-                className="mt-6 w-full py-2.5 px-4 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+                onClick={requestNotifications}
+                className="mt-8 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
               >
-                Start free
+                Enable reminders
+              </button>
+              <button
+                onClick={next}
+                className="mt-3 w-full py-2 text-sm text-text-secondary hover:text-text transition-colors"
+              >
+                Not right now
               </button>
             </div>
-          </div>
-        </section>
+          )}
 
-        {/* Footer */}
-        <footer className="mt-24 pt-8 border-t border-gray-200">
-          <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
-            <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="/terms" className="hover:text-primary transition-colors">Terms</a>
-            <a href="mailto:hello@quitstreak.app" className="hover:text-primary transition-colors">Contact</a>
-          </div>
-          <p className="mt-4 text-xs text-text-secondary leading-relaxed">
-            If you're struggling with addiction, please reach out to SAMHSA's helpline:{' '}
-            <a href="tel:1-800-662-4357" className="underline hover:text-primary">1-800-662-4357</a>
-          </p>
-          <p className="mt-3 text-xs text-text-secondary">
-            Built with care for people who are trying.
-          </p>
-        </footer>
+          {/* 7: PROCESSING */}
+          {screen === 7 && <ProcessingScreen onDone={next} />}
+
+          {/* 8: DEMO — MOOD */}
+          {screen === 8 && (
+            <div className="animate-fade-in">
+              <DemoStepDots step={1} />
+              <h1 className="font-serif text-3xl font-bold text-text">Let's do your first check-in.</h1>
+              <p className="mt-2 text-text-secondary">Takes 30 seconds. This is what {supporterLabel} sees.</p>
+              <div className="mt-8">
+                <p className="text-base font-medium text-text mb-4">How are you feeling right now?</p>
+                <MoodSelector value={demoMood} onChange={setDemoMood} />
+              </div>
+              <div className="flex gap-3 mt-8">
+                <BackBtn onClick={back} />
+                <button
+                  onClick={next}
+                  disabled={demoMood === null}
+                  className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 9: DEMO — CRAVINGS */}
+          {screen === 9 && (
+            <div className="animate-fade-in">
+              <DemoStepDots step={2} />
+              <h1 className="font-serif text-3xl font-bold text-text">Any cravings today?</h1>
+              <p className="mt-2 text-text-secondary">Be honest — tracking the pattern is what helps.</p>
+              <div className="mt-8">
+                <CravingScale value={demoCraving} onChange={setDemoCraving} />
+              </div>
+              <div className="flex gap-3 mt-8">
+                <BackBtn onClick={back} />
+                <button
+                  onClick={next}
+                  disabled={demoCraving === null}
+                  className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                >
+                  Log it
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 10: VALUE DELIVERY — PARTNER VIEW */}
+          {screen === 10 && (
+            <div className="animate-fade-in">
+              <DemoStepDots step={3} />
+              <h1 className="font-serif text-3xl font-bold text-text">Logged. ✓</h1>
+              <p className="mt-2 text-text-secondary">Here's what {supporterLabel} would see right now.</p>
+              <div className="mt-6 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-primary/5 px-5 py-4 border-b border-gray-100">
+                  <p className="text-xs text-text-secondary uppercase tracking-wider font-medium">Partner Dashboard</p>
+                  <p className="font-serif text-lg font-semibold text-text mt-0.5">
+                    {displayName || 'Your'} Journey
+                  </p>
+                </div>
+                <div className="px-5 py-5 space-y-4">
+                  <div className="text-center py-2">
+                    <p className="text-text-secondary text-sm">{adjective || 'free'} for</p>
+                    <p className="font-serif text-4xl font-bold text-primary mt-1">Day 1</p>
+                    <p className="text-text-secondary text-sm mt-1">00:00:00 and counting</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">Today's check-in</p>
+                    <MoodPreview mood={demoMood} craving={demoCraving} />
+                  </div>
+                </div>
+              </div>
+              <p className="mt-4 text-center text-sm text-text-secondary">
+                They see your streak, moods, and milestones — every single day.
+              </p>
+              <button
+                onClick={next}
+                className="mt-6 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+              >
+                Set up my account
+              </button>
+            </div>
+          )}
+
+          {/* 11: WHEN DID YOU QUIT? */}
+          {screen === 11 && (
+            <div className="animate-fade-in">
+              <h1 className="font-serif text-3xl font-bold text-text">When did your streak start?</h1>
+              <p className="mt-2 text-text-secondary">This is when your counter counts from.</p>
+              <div className="mt-8 flex flex-col gap-3">
+                <button
+                  onClick={() => setQuitDate(formatDateForInput(new Date()))}
+                  className={`flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
+                    isToday ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'
+                  }`}
+                >
+                  <span className="text-2xl">🕐</span>
+                  <div>
+                    <p className={`font-medium ${isToday ? 'text-primary' : 'text-text'}`}>Starting today</p>
+                    <p className="text-sm text-text-secondary">My streak starts right now</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    if (isToday) {
+                      const y = new Date()
+                      y.setDate(y.getDate() - 1)
+                      setQuitDate(formatDateForInput(y))
+                    }
+                  }}
+                  className={`flex items-center gap-4 p-5 rounded-xl border-2 transition-all text-left ${
+                    !isToday ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-gray-200'
+                  }`}
+                >
+                  <span className="text-2xl">📅</span>
+                  <div>
+                    <p className={`font-medium ${!isToday ? 'text-primary' : 'text-text'}`}>I already quit</p>
+                    <p className="text-sm text-text-secondary">Pick the day I started</p>
+                  </div>
+                </button>
+              </div>
+              {!isToday && (
+                <input
+                  type="date"
+                  value={quitDate}
+                  max={formatDateForInput(new Date())}
+                  min="2020-01-01"
+                  onChange={e => setQuitDate(e.target.value)}
+                  className="mt-4 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-lg animate-fade-in"
+                />
+              )}
+              <div className="flex gap-3 mt-8">
+                <BackBtn onClick={back} />
+                <button onClick={next} className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors">
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 12: YOUR NAME */}
+          {screen === 12 && (
+            <div className="animate-fade-in">
+              <h1 className="font-serif text-3xl font-bold text-text">What should we call you?</h1>
+              <p className="mt-3 text-text-secondary leading-relaxed">
+                Just a first name or nickname. This is what {supporterLabel} sees when they cheer you on.
+              </p>
+              <input
+                type="text"
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder="Name or nickname"
+                className="mt-6 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-lg"
+                autoFocus
+              />
+              <div className="flex gap-3 mt-8">
+                <BackBtn onClick={back} />
+                <button
+                  onClick={next}
+                  disabled={!displayName.trim()}
+                  className="flex-1 py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30"
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 13: ACCOUNT CREATION */}
+          {screen === 13 && (
+            <div className="animate-fade-in">
+              <h1 className="font-serif text-3xl font-bold text-text">
+                {authMode === 'signup' ? 'Save your streak.' : 'Welcome back.'}
+              </h1>
+              <p className="mt-3 text-text-secondary">
+                {authMode === 'signup'
+                  ? `Free to start. Create your account and your ${adjective} journey begins.`
+                  : 'Sign in to continue your journey.'}
+              </p>
+              {authMode === 'signup' && quitType && (
+                <div className="mt-5 bg-primary/5 rounded-xl px-5 py-4 border border-primary/10 flex items-center gap-4">
+                  <div className="text-center min-w-[52px]">
+                    <p className="font-serif text-3xl font-bold text-primary">
+                      {isToday ? 1 : Math.max(1, Math.floor((Date.now() - new Date(quitDate + 'T00:00:00').getTime()) / 86400000) + 1)}
+                    </p>
+                    <p className="text-xs text-text-secondary">{isToday ? 'day' : 'days'}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-text">{displayName || 'Your streak'}</p>
+                    <p className="text-sm text-text-secondary capitalize">{quitType} — {adjective}</p>
+                  </div>
+                </div>
+              )}
+              {renderAuthForm(false)}
+              {authMode === 'signup' && screen > 0 && (
+                <div className="mt-4">
+                  <BackBtn onClick={back} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 14: PAYWALL */}
+          {screen === 14 && (
+            <PaywallScreen
+              session={signedUpSession}
+              onSkip={() => navigate('/app', { replace: true })}
+              adjective={adjective}
+              supporterLabel={supporterLabel}
+            />
+          )}
+
+        </ScreenWrap>
       </div>
     </div>
   )

@@ -42,10 +42,10 @@ export default function RequireAuth({ children }) {
     return <Navigate to="/app" replace />
   }
 
-  // Profile not yet created — send to onboarding, preserving ?ref if present
+  // Profile not yet created — send back to landing to complete setup
   if (profile === null && location.pathname !== '/app/onboarding') {
-    const onboardingPath = ref ? `/app/onboarding?ref=${ref}` : '/app/onboarding'
-    return <Navigate to={onboardingPath} replace />
+    const landingPath = ref ? `/?ref=${ref}` : '/'
+    return <Navigate to={landingPath} replace />
   }
 
   return children
