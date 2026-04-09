@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
@@ -56,20 +56,6 @@ const plusFeatures = [
   'Priority support',
 ]
 
-function useInView(ref) {
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    if (!ref.current) return
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisible(true) },
-      { threshold: 0.15 }
-    )
-    observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [ref])
-  return visible
-}
-
 export default function Landing() {
   const { user, loading } = useAuth()
   const [searchParams] = useSearchParams()
@@ -78,15 +64,6 @@ export default function Landing() {
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState(null)
   const [sending, setSending] = useState(false)
-
-  const howRef = useRef(null)
-  const partnerRef = useRef(null)
-  const testimonialsRef = useRef(null)
-  const pricingRef = useRef(null)
-  const howVisible = useInView(howRef)
-  const partnerVisible = useInView(partnerRef)
-  const testimonialsVisible = useInView(testimonialsRef)
-  const pricingVisible = useInView(pricingRef)
 
   useEffect(() => {
     if (ref) {
@@ -146,16 +123,16 @@ export default function Landing() {
           <h1 className="font-serif text-4xl font-bold text-text leading-tight">
             Quit drinking. Quit smoking. Quit vaping.
           </h1>
-          <p className="mt-2 font-serif text-xl text-primary font-semibold opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <p className="mt-2 font-serif text-xl text-primary font-semibold">
             And prove it to someone who cares.
           </p>
-          <p className="mt-4 text-text-secondary leading-relaxed opacity-0 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+          <p className="mt-4 text-text-secondary leading-relaxed">
             Track your streak, log your journey, and share a live dashboard with the person rooting for you hardest.
           </p>
         </div>
 
         {/* Sign in form */}
-        <div className="mt-10 max-w-lg opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+        <div className="mt-10 max-w-lg">
           {ref && (
             <div className="mb-4 bg-primary/5 border border-primary/10 rounded-xl px-4 py-3">
               <p className="text-sm text-primary font-medium">
@@ -205,14 +182,13 @@ export default function Landing() {
         </div>
 
         {/* How It Works */}
-        <section ref={howRef} className={`mt-24 transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+        <section className="mt-24">
           <h2 className="font-serif text-2xl font-bold text-text">How it works</h2>
           <div className="mt-8 space-y-6">
             {steps.map((step, i) => (
               <div
                 key={i}
-                className="flex gap-5 items-start transition-all duration-500"
-                style={{ transitionDelay: howVisible ? `${i * 100}ms` : '0ms' }}
+                className="flex gap-5 items-start"
               >
                 <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                   <step.icon className="w-5 h-5 text-primary" />
@@ -233,14 +209,14 @@ export default function Landing() {
         </section>
 
         {/* Partner View Preview */}
-        <section ref={partnerRef} className={`mt-24 transition-all duration-700 ${partnerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+        <section className="mt-24">
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             Your mom. Your partner. Your best friend. Your sponsor.
           </h2>
           <p className="mt-2 text-text-secondary text-center">
             Give them peace of mind.
           </p>
-          <div className={`mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-1000 ${partnerVisible ? 'animate-float' : ''}`}>
+          <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             {/* Mock partner dashboard */}
             <div className="bg-primary/5 px-6 py-4 border-b border-gray-100">
               <p className="text-sm text-text-secondary">Partner Dashboard</p>
@@ -295,7 +271,7 @@ export default function Landing() {
         </section>
 
         {/* Social Proof */}
-        <section ref={testimonialsRef} className={`mt-24 transition-all duration-700 ${testimonialsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+        <section className="mt-24">
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             People are quitting for good
           </h2>
@@ -303,8 +279,7 @@ export default function Landing() {
             {testimonials.map((t, i) => (
               <div
                 key={i}
-                className="bg-white rounded-xl p-5 shadow-sm transition-all duration-500"
-                style={{ transitionDelay: testimonialsVisible ? `${i * 150}ms` : '0ms' }}
+                className="bg-white rounded-xl p-5 shadow-sm"
               >
                 <p className="text-text leading-relaxed">"{t.quote}"</p>
                 <p className="mt-3 text-sm text-text-secondary">
@@ -316,7 +291,7 @@ export default function Landing() {
         </section>
 
         {/* Pricing */}
-        <section ref={pricingRef} className={`mt-24 transition-all duration-700 ${pricingVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
+        <section className="mt-24">
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             Simple pricing
           </h2>
