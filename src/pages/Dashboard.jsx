@@ -55,19 +55,24 @@ function SupporterHome({ profile }) {
   const { people, loading } = useSupportedPeople()
   const lastPartner = localStorage.getItem('pendingShareCode')
 
-  const hasName = !!profile.display_name
+  const firstName = profile.display_name ? profile.display_name.split(' ')[0] : null
 
   return (
-    <div className="px-6 pt-12 pb-6 flex flex-col items-center animate-fade-in">
-      <Heart className="w-12 h-12 text-primary/30 mb-4" />
-      <h1 className="font-serif text-2xl font-bold text-text text-center">
-        {hasName ? `Welcome, ${profile.display_name}` : "You're a supporter"}
-      </h1>
-      <p className="mt-3 text-text-secondary leading-relaxed max-w-sm text-center">
-        You're here to support someone on their journey.
-      </p>
+    <div className="px-6 pt-10 pb-6 animate-fade-in">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <Heart className="w-8 h-8 text-primary/50" />
+        </div>
+        <h1 className="font-serif text-2xl font-bold text-text">
+          {firstName ? `Hey, ${firstName}` : "You're a supporter"}
+        </h1>
+        <p className="mt-2 text-text-secondary leading-relaxed">
+          Supporting someone makes all the difference.
+        </p>
+      </div>
 
-      <div className="mt-8 w-full max-w-sm flex flex-col gap-3">
+      <div className="max-w-md mx-auto flex flex-col gap-3">
         {loading ? (
           <div className="flex justify-center py-8">
             <div className="loading-spinner" />
@@ -77,18 +82,24 @@ function SupporterHome({ profile }) {
             <p className="text-xs font-medium text-text-secondary uppercase tracking-wider px-1">
               People you support
             </p>
-            {people.map(person => {
+            {people.map((person, i) => {
               const displayName = person.display_name || 'Someone'
               const dayCount = person.quit_date ? getDayCount(person.quit_date) : null
+              const initial = displayName[0].toUpperCase()
 
               if (!person.share_active) {
                 return (
                   <div
                     key={person.share_code}
-                    className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 opacity-50"
+                    className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 opacity-40 flex items-center gap-4"
                   >
-                    <p className="font-medium text-text">{displayName}'s Journey</p>
-                    <p className="text-sm text-text-secondary mt-0.5">Sharing paused</p>
+                    <div className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-bold text-gray-400">{initial}</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-text">{displayName}</p>
+                      <p className="text-sm text-text-secondary mt-0.5">Sharing paused</p>
+                    </div>
                   </div>
                 )
               }
@@ -97,13 +108,19 @@ function SupporterHome({ profile }) {
                 <Link
                   key={person.share_code}
                   to={`/partner/${person.share_code}`}
-                  className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm hover:border-primary/20 hover:shadow-md transition-all flex items-center justify-between"
+                  className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm hover:border-primary/20 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-4 opacity-0 animate-fade-in-up"
+                  style={{ animationDelay: `${i * 0.08}s` }}
                 >
-                  <div>
-                    <p className="font-medium text-text">{displayName}'s Journey</p>
+                  <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-bold text-primary">{initial}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-text">{displayName}</p>
                     <p className="text-sm text-text-secondary mt-0.5">
                       Quitting {TYPE_LABELS[person.quit_type] || person.quit_type}
-                      {dayCount !== null && <> · Day {dayCount}</>}
+                      {dayCount !== null && (
+                        <span className="text-primary font-medium"> · Day {dayCount}</span>
+                      )}
                     </p>
                   </div>
                   <ArrowRight className="w-4 h-4 text-text-secondary flex-shrink-0" />
@@ -123,18 +140,20 @@ function SupporterHome({ profile }) {
               </Link>
             )}
             {!lastPartner && (
-              <p className="text-sm text-text-secondary text-center py-2">
-                Visit someone's share link to start supporting them.
-              </p>
+              <div className="text-center py-6">
+                <p className="text-text-secondary">
+                  Visit someone's share link to start supporting them.
+                </p>
+              </div>
             )}
           </>
         )}
 
         <Link
           to="/app/onboarding"
-          className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-primary/20 hover:shadow-md transition-all"
+          className="w-full py-4 px-5 rounded-xl bg-white border border-dashed border-gray-200 text-left hover:border-primary/30 hover:bg-primary/5 transition-all group"
         >
-          <p className="font-medium text-text">Start your own journey</p>
+          <p className="font-medium text-text group-hover:text-primary transition-colors">Start your own journey</p>
           <p className="text-sm text-text-secondary mt-0.5">Track your own streak and check-ins</p>
         </Link>
       </div>
