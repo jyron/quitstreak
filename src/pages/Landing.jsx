@@ -119,7 +119,7 @@ export default function Landing() {
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-6 pt-20 pb-12">
         {/* Hero */}
-        <div className="max-w-lg animate-fade-in">
+        <div className="max-w-lg">
           <h1 className="font-serif text-4xl font-bold text-text leading-tight">
             Quit drinking. Quit smoking. Quit vaping.
           </h1>
