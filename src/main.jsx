@@ -6,9 +6,9 @@ import { ProfileProvider } from './hooks/useProfile'
 import './index.css'
 import App from './App.jsx'
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((r) => r.unregister())
   })
 }
 
