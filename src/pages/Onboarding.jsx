@@ -264,7 +264,7 @@ export default function Onboarding() {
                     What should we call you?
                   </label>
                   <p className="text-xs text-text-secondary/70 mb-2">
-                    So they know who sent it. Or don't — anonymous support works too.
+                    So they know who's cheering them on.
                   </p>
                   <input
                     type="text"
@@ -280,7 +280,7 @@ export default function Onboarding() {
 
               <button
                 onClick={role === 'supporter' ? handleSupporterFinish : () => goToStep(1)}
-                disabled={!role || saving}
+                disabled={!role || saving || (role === 'supporter' && !supporterName.trim())}
                 className="mt-8 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-30 active:scale-[0.98]"
               >
                 {saving ? 'Saving...' : role === 'supporter' ? 'Continue to their dashboard' : 'Continue'}
@@ -350,7 +350,7 @@ export default function Onboarding() {
               <OnboardingIllustration step={3} />
               <h1 className="font-serif text-3xl font-bold text-text">What should we call you?</h1>
               <p className="mt-3 text-text-secondary leading-relaxed">
-                Just a first name or nickname. Or skip it — we won't use a name anywhere if you don't want one.
+                Just a first name or nickname. Your supporters will see this when they cheer you on.
               </p>
               <input
                 type="text"
@@ -361,10 +361,10 @@ export default function Onboarding() {
               />
               <div className="flex gap-3 mt-8">
                 <button
-                  onClick={() => goToStep(4)}
+                  onClick={() => goToStep(2)}
                   className="py-3 px-6 rounded-xl border border-gray-200 text-text-secondary font-medium hover:bg-gray-50 transition-colors"
                 >
-                  Skip
+                  Back
                 </button>
                 <button
                   onClick={() => goToStep(4)}
