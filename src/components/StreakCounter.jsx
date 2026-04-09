@@ -94,6 +94,11 @@ export default function StreakCounter({ quitDate: quitDateStr, quitType }) {
         <div
           className={`absolute w-56 h-56 rounded-full ${styles.bg} ${styles.glow} animate-glow-pulse transition-all duration-1000`}
         />
+        <div
+          className={`absolute w-48 h-48 rounded-full border-2 ${
+            phase === 'mature' || phase === 'strong' ? 'border-secondary/20' : 'border-primary/15'
+          } transition-all duration-1000`}
+        />
         {phase === 'mature' && (
           <div className="absolute w-64 h-64 rounded-full animate-glow-pulse" style={{ animationDelay: '1.5s' }} />
         )}
@@ -108,19 +113,21 @@ export default function StreakCounter({ quitDate: quitDateStr, quitType }) {
         </div>
       </div>
 
-      <div className="flex justify-center gap-8 mt-8 text-text">
-        <div className="flex items-baseline gap-1">
-          <span className="font-serif text-2xl font-bold tabular-nums">{String(elapsed.hours).padStart(2, '0')}</span>
-          <span className="text-xs text-text-secondary font-medium">hr</span>
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="font-serif text-2xl font-bold tabular-nums">{String(elapsed.minutes).padStart(2, '0')}</span>
-          <span className="text-xs text-text-secondary font-medium">min</span>
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="font-serif text-2xl font-bold tabular-nums">{String(elapsed.seconds).padStart(2, '0')}</span>
-          <span className="text-xs text-text-secondary font-medium">sec</span>
-        </div>
+      <div className="flex justify-center gap-6 mt-8">
+        {[
+          { value: elapsed.hours, unit: 'hr' },
+          { value: elapsed.minutes, unit: 'min' },
+          { value: elapsed.seconds, unit: 'sec' },
+        ].map(({ value, unit }) => (
+          <div key={unit} className="flex flex-col items-center">
+            <span className="font-serif text-2xl font-bold tabular-nums text-text">
+              {String(value).padStart(2, '0')}
+            </span>
+            <span className="text-[10px] text-text-secondary font-medium uppercase tracking-wider mt-0.5">
+              {unit}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )
