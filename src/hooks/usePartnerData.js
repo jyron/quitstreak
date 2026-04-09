@@ -12,6 +12,8 @@ export function usePartnerData(shareCode) {
   const [error, setError] = useState(null)
   const [nudgeSent, setNudgeSent] = useState(false)
   const [nudgeCooldown, setNudgeCooldown] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
+  const [senderProfile, setSenderProfile] = useState(null)
 
   useEffect(() => {
     if (!shareCode) {
@@ -26,7 +28,6 @@ export function usePartnerData(shareCode) {
       setNudgeCooldown(true)
       const remaining = NUDGE_COOLDOWN_MS - (Date.now() - Number(lastNudge))
       const timer = setTimeout(() => setNudgeCooldown(false), remaining)
-      // cleanup handled below
       var cooldownTimer = timer
     }
 
@@ -69,6 +70,17 @@ export function usePartnerData(shareCode) {
             { onConflict: 'supporter_id,share_code', ignoreDuplicates: true }
           )
           .then()
+
+        // Fetch sender's profile to check subscription status
+        const { data: senderData } = await supabase
+          .from('profiles')
+          .select('display_name, subscription_status')
+          .eq('id', user.id)
+          .maybeSingle()
+
+        if (!cancelled && senderData) {
+          setSenderProfile(senderData)
+        }
       }
 
       // Fetch checkins for this user
@@ -102,18 +114,18 @@ export function usePartnerData(shareCode) {
   const sendNudge = useCallback(async () => {
     if (!profile || nudgeCooldown) return { error: 'Please wait before sending another.' }
 
-    // Look up the sender's display name if they're signed in
-    let senderName = null
-    if (user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('id', user.id)
-        .maybeSingle()
-      if (data?.display_name) {
-        senderName = data.display_name
+    // Check free nudge limit for authenticated non-subscribers
+    const isSubscribed = senderProfile?.subscription_status === 'active' || senderProfile?.subscription_status === 'canceled'
+    if (user && !isSubscribed) {
+      const freeUsed = localStorage.getItem(`nudge_free_${shareCode}`)
+      if (freeUsed) {
+        setShowPaywall(true)
+        return { error: 'paywall' }
       }
     }
+
+    // Look up the sender's display name if they're signed in
+    let senderName = senderProfile?.display_name || null
 
     const { error } = await supabase
       .from('nudges')
@@ -127,6 +139,11 @@ export function usePartnerData(shareCode) {
       return { error: 'Could not send encouragement. Please try again.' }
     }
 
+    // Mark free nudge as used for non-subscribers
+    if (user && !isSubscribed) {
+      localStorage.setItem(`nudge_free_${shareCode}`, '1')
+    }
+
     // Set cooldown
     localStorage.setItem(`nudge_${shareCode}`, String(Date.now()))
     setNudgeSent(true)
@@ -137,7 +154,7 @@ export function usePartnerData(shareCode) {
     }, NUDGE_COOLDOWN_MS)
 
     return { error: null }
-  }, [profile, shareCode, nudgeCooldown])
+  }, [profile, shareCode, nudgeCooldown, senderProfile, user])
 
-  return { profile, checkins, loading, error, sendNudge, nudgeSent, nudgeCooldown }
+  return { profile, checkins, loading, error, sendNudge, nudgeSent, nudgeCooldown, showPaywall, setShowPaywall }
 }
