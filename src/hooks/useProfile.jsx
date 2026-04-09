@@ -48,6 +48,12 @@ export function ProfileProvider({ children }) {
     return () => { cancelled = true }
   }, [user?.id, authLoading])
 
+  async function refetchProfile() {
+    if (!user) return
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+    if (data) setProfile(data)
+  }
+
   async function updateProfile(updates) {
     if (!user) return { error: 'Not authenticated' }
     const { data, error } = await supabase
@@ -62,7 +68,7 @@ export function ProfileProvider({ children }) {
   }
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, error, updateProfile, setProfile }}>
+    <ProfileContext.Provider value={{ profile, loading, error, updateProfile, setProfile, refetchProfile }}>
       {children}
     </ProfileContext.Provider>
   )
