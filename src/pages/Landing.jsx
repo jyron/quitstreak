@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
-import { Calendar, ClipboardCheck, Users, Check } from 'lucide-react'
+import { Calendar, ClipboardCheck, Users, Check, Eye, EyeOff } from 'lucide-react'
 
 function useReveal() {
   const ref = useRef(null)
@@ -77,9 +77,11 @@ export default function Landing() {
   const [searchParams] = useSearchParams()
   const ref = searchParams.get('ref')
   const [email, setEmail] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [password, setPassword] = useState('')
+  const [mode, setMode] = useState('signup')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState(null)
-  const [sending, setSending] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   const [howRef, howVisible] = useReveal()
   const [partnerRef, partnerVisible] = useReveal()
@@ -99,28 +101,31 @@ export default function Landing() {
     return <Navigate to="/app" replace />
   }
 
-  async function handleSignIn(e) {
+  function friendlyError(msg) {
+    if (msg.includes('Invalid login credentials')) return 'Wrong email or password.'
+    if (msg.includes('User already registered')) return 'An account with this email already exists. Try signing in.'
+    if (msg.includes('Password should be at least')) return 'Password must be at least 6 characters.'
+    if (msg.includes('rate limit') || msg.includes('Rate limit')) return 'Too many attempts. Please wait and try again.'
+    return msg
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
-    setSending(true)
+    setSubmitting(true)
 
-    const redirectTo = ref
-      ? `${window.location.origin}/app?ref=${ref}`
-      : `${window.location.origin}/app`
+    const { error } = mode === 'signup'
+      ? await supabase.auth.signUp({ email, password })
+      : await supabase.auth.signInWithPassword({ email, password })
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
-    })
-
-    setSending(false)
+    setSubmitting(false)
 
     if (error) {
-      setError(error.message)
-    } else {
-      setSubmitted(true)
+      const msg = error.message
+      setError(friendlyError(msg))
+      if (msg.includes('User already registered')) {
+        setMode('signin')
+      }
     }
   }
 
@@ -156,17 +161,9 @@ export default function Landing() {
               </p>
             </div>
           )}
-          {submitted ? (
-            <div className="bg-white rounded-xl p-6 shadow-sm animate-scale-in">
-              <p className="font-serif text-xl font-semibold text-primary">Check your email</p>
-              <p className="mt-2 text-text-secondary">
-                We sent a magic link to <span className="font-medium text-text">{email}</span>. Click it to sign in.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSignIn}>
+          <form onSubmit={handleSubmit}>
               <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
-                {ref ? 'Enter your email to continue' : 'Enter your email to get started'}
+                {mode === 'signup' ? 'Create your account' : 'Welcome back'}
               </label>
               <input
                 id="email"
@@ -175,23 +172,58 @@ export default function Landing() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="email"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
+              <div className="relative mt-3">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password (6+ characters)"
+                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white text-text placeholder:text-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-text-secondary"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
               <button
                 type="submit"
-                disabled={sending}
+                disabled={submitting}
                 className="mt-4 w-full py-3 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                {sending ? 'Sending...' : ref ? 'Continue' : 'Start free — no credit card'}
+                {mode === 'signup'
+                  ? (submitting ? 'Creating account...' : ref ? 'Create account' : 'Start free — no credit card')
+                  : (submitting ? 'Signing in...' : 'Sign in')}
               </button>
               {error && (
                 <p className="mt-3 text-sm text-danger">{error}</p>
               )}
               <p className="mt-3 text-xs text-text-secondary text-center">
-                Already have an account? Use the same email — the magic link signs you in automatically.
+                {mode === 'signup' ? (
+                  <>Already have an account?{' '}
+                    <button type="button" onClick={() => { setMode('signin'); setError(null) }} className="text-primary font-medium">
+                      Sign in
+                    </button>
+                  </>
+                ) : (
+                  <>Don't have an account?{' '}
+                    <button type="button" onClick={() => { setMode('signup'); setError(null) }} className="text-primary font-medium">
+                      Sign up free
+                    </button>
+                  </>
+                )}
               </p>
             </form>
-          )}
         </div>
 
         {/* How It Works */}

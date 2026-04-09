@@ -22,7 +22,7 @@ export default function RequireAuth({ children }) {
   }
 
   // If there's a ?ref param and the user has a profile, redirect to the partner dashboard
-  // (they came here via magic link from a partner dashboard)
+  // (they came here from a partner dashboard link)
   if (ref && profile) {
     return <Navigate to={`/partner/${ref}`} replace />
   }
