@@ -27,23 +27,8 @@ export default function RequireAuth({ children }) {
     return <Navigate to={`/partner/${ref}`} replace />
   }
 
-  // Supporters have a profile but no quit journey — they're allowed through to /app
-  // (Dashboard.jsx will show them the supporter home view)
-  if (profile?.account_type === 'supporter') {
-    // Don't send supporters to onboarding; they're set up already
-    if (location.pathname === '/app/onboarding') {
-      return <Navigate to="/app" replace />
-    }
-    return children
-  }
-
-  // Profile exists (addict) — don't let user linger on onboarding
-  if (profile && location.pathname === '/app/onboarding') {
-    return <Navigate to="/app" replace />
-  }
-
-  // Profile not yet created — send back to landing to complete setup
-  if (profile === null && location.pathname !== '/app/onboarding') {
+  // Profile not yet created — send back to landing to complete onboarding
+  if (profile === null) {
     const landingPath = ref ? `/?ref=${ref}` : '/'
     return <Navigate to={landingPath} replace />
   }

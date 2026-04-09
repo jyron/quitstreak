@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { Wine, Cigarette, CloudFog, Heart, Check, Eye, EyeOff, ArrowRight, Bell, UserCircle } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { useProfile } from '../hooks/useProfile'
 import { supabase } from '../lib/supabase'
 import MoodSelector from '../components/MoodSelector'
 import CravingScale from '../components/CravingScale'
@@ -280,6 +281,7 @@ function PaywallScreen({ session, onSkip, adjective, supporterLabel }) {
 
 export default function Landing() {
   const { user, loading: authLoading } = useAuth()
+  const { profile, loading: profileLoading } = useProfile()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const ref = searchParams.get('ref') || localStorage.getItem('pendingShareCode')
@@ -314,7 +316,7 @@ export default function Landing() {
     if (r) localStorage.setItem('pendingShareCode', r)
   }, [])
 
-  if (authLoading) {
+  if (authLoading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="loading-spinner" />
@@ -322,7 +324,8 @@ export default function Landing() {
     )
   }
 
-  if (!authLoading && user) {
+  // Only redirect if user is fully set up (has a profile)
+  if (user && profile) {
     if (ref) return <Navigate to={`/partner/${ref}`} replace />
     return <Navigate to="/app" replace />
   }
