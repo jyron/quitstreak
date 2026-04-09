@@ -343,8 +343,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* CTA to share link if no supporters and subscribed */}
-      {!supportersLoading && supporters.length === 0 && profile.share_code && (
+      {/* CTA to share link if no supporters yet */}
+      {!supportersLoading && supporters.length === 0 && (
         <div className="mt-6 opacity-0 animate-fade-in-up stagger-5">
           <button
             onClick={() => navigate('/app/partner-setup')}

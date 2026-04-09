@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   if (authError || !user) return res.status(401).json({ error: 'Invalid token' })
 
   // Validate plan
-  const { plan } = req.body || {}
+  const { plan, successPath } = req.body || {}
   const priceId = PRICE_IDS[plan]
   if (!priceId) return res.status(400).json({ error: 'Invalid plan. Use "monthly" or "yearly".' })
 
@@ -49,8 +49,8 @@ export default async function handler(req, res) {
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}/app/partner-setup?checkout=success`,
-    cancel_url: `${origin}/app/partner-setup`,
+    success_url: `${origin}${successPath || '/app/partner-setup'}?checkout=success`,
+    cancel_url: `${origin}${successPath || '/app/partner-setup'}`,
     subscription_data: {
       metadata: { supabase_user_id: user.id },
     },

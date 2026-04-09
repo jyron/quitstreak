@@ -14,6 +14,7 @@ export function usePartnerData(shareCode) {
   const [nudgeCooldown, setNudgeCooldown] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [senderProfile, setSenderProfile] = useState(null)
+  const [daysSinceLastCheckin, setDaysSinceLastCheckin] = useState(null)
 
   useEffect(() => {
     if (!shareCode) {
@@ -101,6 +102,15 @@ export function usePartnerData(shareCode) {
 
       setCheckins(checkinData || [])
       setLoading(false)
+
+      // Compute days since last check-in
+      if (checkinData && checkinData.length > 0) {
+        const last = new Date(checkinData[0].created_at)
+        const days = Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24))
+        setDaysSinceLastCheckin(days)
+      } else {
+        setDaysSinceLastCheckin(null)
+      }
     }
 
     fetchData()
@@ -156,5 +166,5 @@ export function usePartnerData(shareCode) {
     return { error: null }
   }, [profile, shareCode, nudgeCooldown, senderProfile, user])
 
-  return { profile, checkins, loading, error, sendNudge, nudgeSent, nudgeCooldown, showPaywall, setShowPaywall }
+  return { profile, checkins, loading, error, sendNudge, nudgeSent, nudgeCooldown, showPaywall, setShowPaywall, daysSinceLastCheckin, senderProfile }
 }
