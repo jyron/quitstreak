@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Heart, X, ArrowRight, Trophy, Pencil } from 'lucide-react'
+import { Heart, X, ArrowRight, Trophy, Pencil, Users, Send } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
 import Confetti from '../components/Confetti'
 import CheckinHistory from '../components/CheckinHistory'
@@ -9,6 +9,7 @@ import { useProfile } from '../hooks/useProfile'
 import { useCheckins } from '../hooks/useCheckins'
 import { useNudges } from '../hooks/useNudges'
 import { useSupportedPeople } from '../hooks/useSupportedPeople'
+import { useSupporters } from '../hooks/useSupporters'
 import { getMood, getCravingLevel } from '../lib/checkinData'
 
 const TYPE_LABELS = {
@@ -145,6 +146,7 @@ export default function Dashboard() {
   const { profile, loading } = useProfile()
   const { checkins, loading: checkinsLoading, todayCheckin } = useCheckins()
   const { nudges, dismissNudges } = useNudges()
+  const { supporters, loading: supportersLoading } = useSupporters(profile?.share_code)
   const navigate = useNavigate()
   const [showConfetti, setShowConfetti] = useState(false)
 
@@ -288,6 +290,57 @@ export default function Dashboard() {
       {!checkinsLoading && (
         <div className="mt-6 opacity-0 animate-fade-in-up stagger-4">
           <CheckinHistory checkins={checkins} />
+        </div>
+      )}
+
+      {/* Your supporters */}
+      {!supportersLoading && supporters.length > 0 && (
+        <div className="mt-6 opacity-0 animate-fade-in-up stagger-5">
+          <p className="text-xs font-medium text-text-secondary uppercase tracking-wider px-1 mb-3">
+            Your Supporters
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {supporters.map(s => (
+              <div
+                key={s.id}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-sm transition-all ${
+                  s.has_encouraged
+                    ? 'bg-secondary/5 border-secondary/20'
+                    : 'bg-white border-gray-100'
+                }`}
+              >
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                  s.has_encouraged ? 'bg-secondary' : 'bg-primary/60'
+                }`}>
+                  {(s.display_name || '?')[0].toUpperCase()}
+                </div>
+                <span className="text-sm font-medium text-text">{s.display_name || 'Someone'}</span>
+                {s.has_encouraged && (
+                  <Heart className="w-3.5 h-3.5 text-secondary flex-shrink-0" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* CTA to share link if no supporters and subscribed */}
+      {!supportersLoading && supporters.length === 0 && profile.share_code && (
+        <div className="mt-6 opacity-0 animate-fade-in-up stagger-5">
+          <button
+            onClick={() => navigate('/app/partner-setup')}
+            className="w-full py-4 px-5 rounded-xl bg-white border border-gray-100 shadow-sm text-left hover:border-primary/20 hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Users className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-text">Share your journey</p>
+                <p className="text-sm text-text-secondary mt-0.5">Invite someone to follow your progress</p>
+              </div>
+            </div>
+          </button>
         </div>
       )}
     </div>
