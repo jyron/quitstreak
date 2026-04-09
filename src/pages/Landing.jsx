@@ -1,8 +1,24 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { Calendar, ClipboardCheck, Users, Check } from 'lucide-react'
+
+function useReveal() {
+  const ref = useRef(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); observer.disconnect() } },
+      { threshold: 0.1 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  return [ref, visible]
+}
 
 const steps = [
   {
@@ -65,21 +81,18 @@ export default function Landing() {
   const [error, setError] = useState(null)
   const [sending, setSending] = useState(false)
 
+  const [howRef, howVisible] = useReveal()
+  const [partnerRef, partnerVisible] = useReveal()
+  const [testimonialsRef, testimonialsVisible] = useReveal()
+  const [pricingRef, pricingVisible] = useReveal()
+
   useEffect(() => {
     if (ref) {
       localStorage.setItem('pendingShareCode', ref)
     }
   }, [ref])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-text-secondary">Loading...</div>
-      </div>
-    )
-  }
-
-  if (user) {
+  if (!loading && user) {
     if (ref) {
       return <Navigate to={`/partner/${ref}`} replace />
     }
@@ -120,19 +133,19 @@ export default function Landing() {
       <div className="max-w-2xl mx-auto px-6 pt-20 pb-12">
         {/* Hero */}
         <div className="max-w-lg">
-          <h1 className="font-serif text-4xl font-bold text-text leading-tight">
+          <h1 className="font-serif text-4xl font-bold text-text leading-tight animate-fade-in">
             Quit drinking. Quit smoking. Quit vaping.
           </h1>
-          <p className="mt-2 font-serif text-xl text-primary font-semibold">
+          <p className="mt-2 font-serif text-xl text-primary font-semibold animate-fade-in" style={{ animationDelay: '0.15s' }}>
             And prove it to someone who cares.
           </p>
-          <p className="mt-4 text-text-secondary leading-relaxed">
+          <p className="mt-4 text-text-secondary leading-relaxed animate-fade-in" style={{ animationDelay: '0.3s' }}>
             Track your streak, log your journey, and share a live dashboard with the person rooting for you hardest.
           </p>
         </div>
 
         {/* Sign in form */}
-        <div className="mt-10 max-w-lg">
+        <div className="mt-10 max-w-lg animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
           {ref && (
             <div className="mb-4 bg-primary/5 border border-primary/10 rounded-xl px-4 py-3">
               <p className="text-sm text-primary font-medium">
@@ -182,13 +195,14 @@ export default function Landing() {
         </div>
 
         {/* How It Works */}
-        <section className="mt-24">
+        <section ref={howRef} className={`mt-24 transition-all duration-700 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <h2 className="font-serif text-2xl font-bold text-text">How it works</h2>
           <div className="mt-8 space-y-6">
             {steps.map((step, i) => (
               <div
                 key={i}
-                className="flex gap-5 items-start"
+                className={`flex gap-5 items-start transition-all duration-500 ${howVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}
+                style={{ transitionDelay: howVisible ? `${i * 120}ms` : '0ms' }}
               >
                 <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                   <step.icon className="w-5 h-5 text-primary" />
@@ -209,14 +223,14 @@ export default function Landing() {
         </section>
 
         {/* Partner View Preview */}
-        <section className="mt-24">
+        <section ref={partnerRef} className={`mt-24 transition-all duration-700 ${partnerVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             Your mom. Your partner. Your best friend. Your sponsor.
           </h2>
           <p className="mt-2 text-text-secondary text-center">
             Give them peace of mind.
           </p>
-          <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className={`mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-1000 ${partnerVisible ? 'animate-float' : ''}`}>
             {/* Mock partner dashboard */}
             <div className="bg-primary/5 px-6 py-4 border-b border-gray-100">
               <p className="text-sm text-text-secondary">Partner Dashboard</p>
@@ -271,7 +285,7 @@ export default function Landing() {
         </section>
 
         {/* Social Proof */}
-        <section className="mt-24">
+        <section ref={testimonialsRef} className={`mt-24 transition-all duration-700 ${testimonialsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             People are quitting for good
           </h2>
@@ -279,7 +293,8 @@ export default function Landing() {
             {testimonials.map((t, i) => (
               <div
                 key={i}
-                className="bg-white rounded-xl p-5 shadow-sm"
+                className={`bg-white rounded-xl p-5 shadow-sm transition-all duration-500 ${testimonialsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}`}
+                style={{ transitionDelay: testimonialsVisible ? `${i * 150}ms` : '0ms' }}
               >
                 <p className="text-text leading-relaxed">"{t.quote}"</p>
                 <p className="mt-3 text-sm text-text-secondary">
@@ -291,7 +306,7 @@ export default function Landing() {
         </section>
 
         {/* Pricing */}
-        <section className="mt-24">
+        <section ref={pricingRef} className={`mt-24 transition-all duration-700 ${pricingVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <h2 className="font-serif text-2xl font-bold text-text text-center">
             Simple pricing
           </h2>
