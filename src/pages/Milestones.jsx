@@ -47,7 +47,7 @@ function CelebrationOverlay({ milestone, onClose }) {
       <Confetti />
 
       <div
-        className={`relative bg-white rounded-2xl shadow-xl p-8 mx-6 max-w-sm w-full text-center transition-all duration-500 ${
+        className={`relative bg-white rounded-2xl shadow-2xl p-8 mx-6 max-w-sm w-full text-center transition-all duration-500 ${
           show ? 'scale-100 opacity-100' : 'scale-75 opacity-0'
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -59,20 +59,21 @@ function CelebrationOverlay({ milestone, onClose }) {
           <X size={20} />
         </button>
 
-        <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mx-auto mb-4 animate-scale-in">
-          <Trophy className="w-8 h-8 text-secondary" />
+        <div className="w-20 h-20 rounded-full bg-secondary/10 flex items-center justify-center mx-auto mb-5 animate-scale-in">
+          <Trophy className="w-10 h-10 text-secondary" />
         </div>
 
-        <h2 className="font-serif text-2xl font-bold text-text">
+        <p className="text-sm font-medium text-secondary uppercase tracking-wider mb-2">Milestone reached</p>
+        <h2 className="font-serif text-3xl font-bold text-text">
           {milestone.label}!
         </h2>
-        <p className="mt-3 text-text-secondary leading-relaxed">
+        <p className="mt-4 text-text-secondary leading-relaxed">
           You made it. {milestone.days === 1 ? 'The first day is always the hardest.' : `${milestone.label} of real progress.`} Be proud of yourself.
         </p>
 
         <button
           onClick={onClose}
-          className="mt-6 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors active:scale-[0.98]"
+          className="mt-8 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors active:scale-[0.98]"
         >
           Keep going
         </button>

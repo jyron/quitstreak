@@ -158,18 +158,22 @@ export default function CheckIn() {
 
           {/* Confirmation */}
           {step === 'done' && (
-            <div className="text-center pt-16">
+            <div className="text-center pt-12">
               <Confetti />
-              <div className="animate-scale-in mb-6">
-                <CheckCircle2 className="w-14 h-14 text-primary mx-auto" strokeWidth={1.5} />
+              <div className="animate-scale-in mb-5">
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-10 h-10 text-primary" strokeWidth={1.5} />
+                </div>
               </div>
-              <h1 className="font-serif text-4xl font-bold text-text opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>Logged.</h1>
-              <p className="mt-6 text-lg text-text-secondary opacity-0 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+              <h1 className="font-serif text-5xl font-bold text-text opacity-0 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+                Logged.
+              </h1>
+              <p className="mt-5 text-lg text-text-secondary leading-relaxed opacity-0 animate-fade-in-up max-w-xs mx-auto" style={{ animationDelay: '0.4s' }}>
                 {getConfirmationMessage(profile?.quit_date)}
               </p>
               <button
                 onClick={() => navigate('/app')}
-                className="mt-10 py-3.5 px-8 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors opacity-0 animate-fade-in active:scale-[0.98]" style={{ animationDelay: '0.6s' }}
+                className="mt-10 py-3.5 px-10 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors opacity-0 animate-fade-in active:scale-[0.98]" style={{ animationDelay: '0.6s' }}
               >
                 Back to Dashboard
               </button>

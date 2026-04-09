@@ -45,23 +45,6 @@
   to { transform: rotate(360deg); }
 }
 
-/* Confetti celebration */
-.confetti-container {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 50;
-  overflow: hidden;
-}
-
-.confetti-piece {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  top: -10px;
-  border-radius: 2px;
-  animation: confetti-fall 1.5s ease-out forwards;
-}
 
 @keyframes fade-in-up {
   0% { opacity: 0; transform: translateY(20px); }
