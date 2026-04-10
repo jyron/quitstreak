@@ -281,7 +281,7 @@ function PaywallScreen({ session, onSkip, adjective, supporterLabel }) {
 
 export default function Landing() {
   const { user, loading: authLoading } = useAuth()
-  const { profile, loading: profileLoading } = useProfile()
+  const { profile, loading: profileLoading, setProfile } = useProfile()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const ref = searchParams.get('ref') || localStorage.getItem('pendingShareCode')
@@ -357,9 +357,12 @@ export default function Landing() {
     setAuthError(null)
 
     if (authMode === 'signin') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) { setSubmitting(false); setAuthError(friendlyError(error.message)); return }
+      // Fetch the existing profile so RequireAuth sees it immediately
+      const { data: existingProfile } = await supabase.from('profiles').select('*').eq('id', signInData.user.id).maybeSingle()
       setSubmitting(false)
-      if (error) { setAuthError(friendlyError(error.message)); return }
+      if (existingProfile) setProfile(existingProfile)
       localStorage.removeItem('pendingShareCode')
       navigate(ref ? `/partner/${ref}` : '/app', { replace: true })
       return
@@ -376,13 +379,14 @@ export default function Landing() {
     const userId = data.user.id
 
     if (isSupporter) {
-      const { error: pe } = await supabase.from('profiles').upsert({
+      const { data: profileData, error: pe } = await supabase.from('profiles').upsert({
         id: userId,
         account_type: 'supporter',
         display_name: supporterName.trim() || null,
-      }, { onConflict: 'id' })
+      }, { onConflict: 'id' }).select().single()
       setSubmitting(false)
       if (pe) { setAuthError(pe.message); return }
+      setProfile(profileData)
       localStorage.removeItem('pendingShareCode')
       navigate(ref ? `/partner/${ref}` : '/app', { replace: true })
       return
@@ -394,17 +398,18 @@ export default function Landing() {
       ? new Date().toISOString()
       : new Date(quitDate + 'T00:00:00').toISOString()
 
-    const { error: pe } = await supabase.from('profiles').upsert({
+    const { data: profileData, error: pe } = await supabase.from('profiles').upsert({
       id: userId,
       account_type: 'addict',
       display_name: displayName.trim() || null,
       quit_type: quitType,
       quit_date: quitTimestamp,
-    }, { onConflict: 'id' })
+    }, { onConflict: 'id' }).select().single()
 
     setSubmitting(false)
     if (pe) { setAuthError(pe.message); return }
 
+    setProfile(profileData)
     setSignedUpSession(data.session)
     sessionStorage.setItem('showConfetti', '1')
     goTo(14)
