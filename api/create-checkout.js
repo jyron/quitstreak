@@ -9,6 +9,10 @@ const PRICE_IDS = {
   yearly: process.env.STRIPE_YEARLY_PRICE_ID,
 }
 
+function isValidEmail(email) {
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -22,11 +26,21 @@ export default async function handler(req, res) {
   if (authError || !user) return res.status(401).json({ error: 'Invalid token' })
 
   // Validate plan
-  const { plan, successPath } = req.body || {}
+  const { plan, successPath, giftForEmail } = req.body || {}
   const priceId = PRICE_IDS[plan]
   if (!priceId) return res.status(400).json({ error: 'Invalid plan. Use "monthly" or "yearly".' })
 
-  // Get or create Stripe customer
+  const isGift = giftForEmail != null
+  if (isGift) {
+    if (!isValidEmail(giftForEmail)) {
+      return res.status(400).json({ error: 'Enter a valid email address for the gift recipient.' })
+    }
+    if (giftForEmail.toLowerCase() === (user.email || '').toLowerCase()) {
+      return res.status(400).json({ error: "You can't gift a subscription to yourself." })
+    }
+  }
+
+  // Get or create Stripe customer (the gifter's customer in gift mode)
   const { data: profile } = await supabase
     .from('profiles')
     .select('stripe_customer_id')
@@ -43,18 +57,30 @@ export default async function handler(req, res) {
     await supabase.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id)
   }
 
-  // Create Checkout session
+  // Build subscription metadata — this is what the webhook keys off of
+  const subscriptionMetadata = isGift
+    ? {
+        kind: 'gift',
+        gift_from_user_id: user.id,
+        gift_for_email: giftForEmail.toLowerCase().trim(),
+      }
+    : {
+        kind: 'self',
+        supabase_user_id: user.id,
+      }
+
   const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || process.env.VITE_APP_URL
+  const defaultPath = isGift ? '/app/partner-setup' : '/app/partner-setup'
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
-    success_url: `${origin}${successPath || '/app/partner-setup'}?checkout=success`,
-    cancel_url: `${origin}${successPath || '/app/partner-setup'}`,
+    success_url: `${origin}${successPath || defaultPath}?checkout=${isGift ? 'gift_success' : 'success'}`,
+    cancel_url: `${origin}${successPath || defaultPath}`,
     subscription_data: {
-      metadata: { supabase_user_id: user.id },
+      metadata: subscriptionMetadata,
     },
-    metadata: { supabase_user_id: user.id },
+    metadata: subscriptionMetadata,
   })
 
   return res.status(200).json({ url: session.url })

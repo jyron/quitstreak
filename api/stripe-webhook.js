@@ -16,6 +16,8 @@ function getRawBody(req) {
   })
 }
 
+// ─── Self-subscription helpers ──────────────────────────────────────────────
+
 async function updateSubscriptionStatus(userId, status, customerId) {
   const updates = { subscription_status: status }
   if (customerId) updates.stripe_customer_id = customerId
@@ -23,11 +25,9 @@ async function updateSubscriptionStatus(userId, status, customerId) {
 }
 
 async function getUserIdFromSubscription(subscription) {
-  // First check subscription metadata
   if (subscription.metadata?.supabase_user_id) {
     return subscription.metadata.supabase_user_id
   }
-  // Fallback: look up by stripe_customer_id
   const { data } = await supabase
     .from('profiles')
     .select('id')
@@ -35,6 +35,57 @@ async function getUserIdFromSubscription(subscription) {
     .single()
   return data?.id
 }
+
+// ─── Gift helpers ───────────────────────────────────────────────────────────
+
+function stripeStatusToLocal(subscription) {
+  if (subscription.status === 'active' && !subscription.cancel_at_period_end) return 'active'
+  if (subscription.status === 'active' && subscription.cancel_at_period_end) return 'canceled'
+  if (subscription.status === 'past_due') return 'past_due'
+  return 'free'
+}
+
+async function upsertGiftedSubscription(subscription) {
+  const meta = subscription.metadata || {}
+  const giftForEmail = (meta.gift_for_email || '').toLowerCase().trim()
+  const gifterUserId = meta.gift_from_user_id || null
+  if (!giftForEmail) return
+
+  // Try to match the recipient to an existing profile by email
+  let recipientUserId = null
+  const { data: matchedUser } = await supabase.rpc('lookup_profile_id_by_email', { p_email: giftForEmail })
+  if (matchedUser) recipientUserId = matchedUser
+
+  const localStatus = stripeStatusToLocal(subscription)
+
+  await supabase
+    .from('gifted_subscriptions')
+    .upsert(
+      {
+        stripe_subscription_id: subscription.id,
+        stripe_customer_id: subscription.customer,
+        gifter_user_id: gifterUserId,
+        recipient_email: giftForEmail,
+        recipient_user_id: recipientUserId,
+        status: localStatus,
+      },
+      { onConflict: 'stripe_subscription_id' }
+    )
+}
+
+async function updateGiftedSubscriptionStatus(subscription) {
+  const localStatus = stripeStatusToLocal(subscription)
+  await supabase
+    .from('gifted_subscriptions')
+    .update({ status: localStatus })
+    .eq('stripe_subscription_id', subscription.id)
+}
+
+function isGiftSubscription(subscription) {
+  return subscription?.metadata?.kind === 'gift'
+}
+
+// ─── Handler ────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -47,7 +98,8 @@ export default async function handler(req, res) {
   let event
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET)
-  } catch {
+  } catch (err) {
+    console.error('[webhook] signature verification failed:', err.message)
     return res.status(400).json({ error: 'Webhook signature verification failed' })
   }
 
@@ -56,9 +108,11 @@ export default async function handler(req, res) {
       const session = event.data.object
       if (session.mode === 'subscription' && session.subscription) {
         const subscription = await stripe.subscriptions.retrieve(session.subscription)
-        const userId = await getUserIdFromSubscription(subscription)
-        if (userId) {
-          await updateSubscriptionStatus(userId, 'active', session.customer)
+        if (isGiftSubscription(subscription)) {
+          await upsertGiftedSubscription(subscription)
+        } else {
+          const userId = await getUserIdFromSubscription(subscription)
+          if (userId) await updateSubscriptionStatus(userId, 'active', session.customer)
         }
       }
       break
@@ -66,28 +120,26 @@ export default async function handler(req, res) {
 
     case 'customer.subscription.updated': {
       const subscription = event.data.object
-      const userId = await getUserIdFromSubscription(subscription)
-      if (!userId) break
-
-      let status
-      if (subscription.status === 'active' && !subscription.cancel_at_period_end) {
-        status = 'active'
-      } else if (subscription.status === 'active' && subscription.cancel_at_period_end) {
-        status = 'canceled' // Still has access until period ends
-      } else if (subscription.status === 'past_due') {
-        status = 'past_due'
+      if (isGiftSubscription(subscription)) {
+        await updateGiftedSubscriptionStatus(subscription)
       } else {
-        status = 'free'
+        const userId = await getUserIdFromSubscription(subscription)
+        if (!userId) break
+        await updateSubscriptionStatus(userId, stripeStatusToLocal(subscription))
       }
-      await updateSubscriptionStatus(userId, status)
       break
     }
 
     case 'customer.subscription.deleted': {
       const subscription = event.data.object
-      const userId = await getUserIdFromSubscription(subscription)
-      if (userId) {
-        await updateSubscriptionStatus(userId, 'free')
+      if (isGiftSubscription(subscription)) {
+        await supabase
+          .from('gifted_subscriptions')
+          .update({ status: 'free' })
+          .eq('stripe_subscription_id', subscription.id)
+      } else {
+        const userId = await getUserIdFromSubscription(subscription)
+        if (userId) await updateSubscriptionStatus(userId, 'free')
       }
       break
     }
@@ -96,9 +148,11 @@ export default async function handler(req, res) {
       const invoice = event.data.object
       if (invoice.subscription) {
         const subscription = await stripe.subscriptions.retrieve(invoice.subscription)
-        const userId = await getUserIdFromSubscription(subscription)
-        if (userId) {
-          await updateSubscriptionStatus(userId, 'past_due')
+        if (isGiftSubscription(subscription)) {
+          await updateGiftedSubscriptionStatus(subscription)
+        } else {
+          const userId = await getUserIdFromSubscription(subscription)
+          if (userId) await updateSubscriptionStatus(userId, 'past_due')
         }
       }
       break

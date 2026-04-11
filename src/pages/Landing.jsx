@@ -664,7 +664,7 @@ export default function Landing() {
           {screen === S_PAYWALL && (
             <PaywallScreen
               session={signedUpSession}
-              onSkip={() => navigate('/app', { replace: true })}
+              onSkip={() => { window.location.assign('/app') }}
               adjective={adjective}
             />
           )}

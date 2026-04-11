@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { Heart, Send, X, MessageCircle, Users, Bell } from 'lucide-react'
+import { Heart, Send, X, MessageCircle, Users, Bell, Lock, Gift } from 'lucide-react'
 import StreakCounter from '../components/StreakCounter'
 import CheckinHistory from '../components/CheckinHistory'
 import { usePartnerData } from '../hooks/usePartnerData'
 import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 
 const TYPE_LABELS = {
   drinking: 'alcohol',
@@ -127,7 +128,7 @@ export default function PartnerDashboard() {
     profile, checkins, loading, error,
     sendNudge, nudgeSent, nudgeCooldown,
     showPaywall, setShowPaywall,
-    daysSinceLastCheckin, senderProfile,
+    daysSinceLastCheckin, senderProfile, freeNudgeUsed, activeGift,
   } = usePartnerData(shareCode)
   const [nudgeError, setNudgeError] = useState(null)
   const [sending, setSending] = useState(false)
@@ -179,7 +180,9 @@ export default function PartnerDashboard() {
   }
 
   const displayName = profile.display_name || 'Someone'
-  const isSubscribed = senderProfile?.subscription_status === 'active' || senderProfile?.subscription_status === 'canceled'
+  const selfSubbed = senderProfile?.subscription_status === 'active' || senderProfile?.subscription_status === 'canceled'
+  const isSubscribed = selfSubbed || !!activeGift
+  const isLocked = !user
 
   return (
     <div className="min-h-screen bg-background">
@@ -193,26 +196,15 @@ export default function PartnerDashboard() {
           </div>
         )}
 
-        {/* Sign-in banner — unauthenticated visitors */}
-        {!user && (
-          <div className="bg-white border border-gray-100 shadow-sm rounded-2xl p-6 mb-6 text-center animate-fade-in">
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Heart className="w-7 h-7 text-primary/60" />
-            </div>
-            <h2 className="font-serif text-xl font-bold text-text">
-              {displayName} is sharing their journey with you
-            </h2>
-            <p className="mt-2 text-sm text-text-secondary leading-relaxed">
-              Create a free account to send encouragement, see their daily moods, and follow their progress.
-            </p>
-            <Link
-              to={`/?ref=${shareCode}`}
-              className="mt-5 flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+        {/* Top bar with sign-out for authenticated supporters */}
+        {user && (
+          <div className="flex justify-end mb-2 -mt-2">
+            <button
+              onClick={() => supabase.auth.signOut()}
+              className="text-xs text-text-secondary hover:text-text transition-colors"
             >
-              <Heart className="w-4 h-4" />
-              Follow {displayName}'s journey
-            </Link>
-            <p className="mt-3 text-xs text-text-secondary">Free to join. No credit card required.</p>
+              Sign out
+            </button>
           </div>
         )}
 
@@ -226,72 +218,132 @@ export default function PartnerDashboard() {
           </p>
         </div>
 
-        {/* Streak counter */}
+        {/* Streak counter — always visible */}
         <StreakCounter
           quitDate={profile.quit_date}
           quitType={profile.quit_type}
         />
 
-        {/* Days-since-checkin nudge banner */}
-        {daysSinceLastCheckin !== null && daysSinceLastCheckin >= 1 && (
-          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
-            <p className="text-sm font-medium text-amber-900">
-              {daysSinceLastCheckin === 1
-                ? `${displayName} hasn't checked in today.`
-                : `${daysSinceLastCheckin} days since ${displayName}'s last check-in.`}
-            </p>
-            <p className="text-sm text-amber-700 mt-0.5">
-              Send them a reminder to check in — it only takes a second.
-            </p>
-          </div>
-        )}
-
-        {/* Send encouragement */}
-        <div className="mt-4">
-          {nudgeSent ? (
-            <div className="w-full py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 text-center">
-              <div className="flex items-center justify-center gap-2">
-                <Heart className="w-5 h-5 text-primary" />
-                <span className="font-medium text-primary">Reminder sent!</span>
+        {isLocked ? (
+          /* ─── Locked preview (unauthenticated) ─────────────────────────── */
+          <>
+            {/* Big signup CTA replacing the nudge button */}
+            <div className="mt-6 bg-white border border-gray-100 shadow-sm rounded-2xl p-6 text-center animate-fade-in">
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                <Heart className="w-7 h-7 text-primary/70" />
               </div>
-              <p className="text-sm text-text-secondary mt-1">
-                {displayName} will see it next time they open the app.
+              <h2 className="font-serif text-xl font-bold text-text">
+                Send {displayName} encouragement
+              </h2>
+              <p className="mt-2 text-sm text-text-secondary leading-relaxed">
+                Create a free account to send a check-in reminder and follow {displayName}'s daily progress.
+              </p>
+              <Link
+                to={`/?ref=${shareCode}`}
+                className="mt-5 flex items-center justify-center gap-2 w-full py-3.5 px-6 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Send className="w-4 h-4" />
+                Sign up to send a reminder
+              </Link>
+              <p className="mt-3 text-xs text-text-secondary">
+                Free to join. First reminder is on us.
               </p>
             </div>
-          ) : (
-            <button
-              onClick={handleNudge}
-              disabled={sending || nudgeCooldown}
-              className="w-full py-4 px-5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              {sending
-                ? 'Sending...'
-                : nudgeCooldown
-                ? 'Sent recently'
-                : user && !isSubscribed
-                ? 'Send a check-in reminder'
-                : 'Send a check-in reminder'}
-            </button>
-          )}
-          {nudgeError && (
-            <p className="text-sm text-danger mt-2 text-center">{nudgeError}</p>
-          )}
-          {/* Paywall hint for non-subscribers */}
-          {user && !isSubscribed && !nudgeSent && !nudgeCooldown && (
-            <p className="text-xs text-text-secondary text-center mt-2">
-              {localStorage.getItem(`nudge_free_${shareCode}`)
-                ? 'Subscribe to send unlimited reminders'
-                : 'First reminder is free'}
-            </p>
-          )}
-        </div>
 
-        {/* 7-day check-in history */}
-        {checkins.length > 0 && (
-          <div className="mt-6">
-            <CheckinHistory checkins={checkins} readOnly />
-          </div>
+            {/* Blurred check-in history preview */}
+            {checkins.length > 0 && (
+              <div className="mt-6 relative">
+                <div className="pointer-events-none select-none blur-sm opacity-60">
+                  <CheckinHistory checkins={checkins} readOnly />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl px-4 py-3 flex items-center gap-2 shadow-sm">
+                    <Lock className="w-4 h-4 text-text-secondary" />
+                    <p className="text-sm font-medium text-text">
+                      Sign up to see {displayName}'s check-ins
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          /* ─── Full dashboard (authenticated) ───────────────────────────── */
+          <>
+            {/* Gift recipient banner */}
+            {activeGift && (
+              <div className="mt-4 bg-secondary/10 border border-secondary/20 rounded-xl px-5 py-4 flex items-start gap-3">
+                <Gift className="w-5 h-5 text-secondary flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-text">
+                    {activeGift.gifter_name ? `${activeGift.gifter_name} gifted you unlimited support` : 'You have unlimited support'}
+                  </p>
+                  <p className="text-sm text-text-secondary mt-0.5">
+                    Send as many check-in reminders as you like — it's on them.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Days-since-checkin nudge banner */}
+            {daysSinceLastCheckin !== null && daysSinceLastCheckin >= 1 && (
+              <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+                <p className="text-sm font-medium text-amber-900">
+                  {daysSinceLastCheckin === 1
+                    ? `${displayName} hasn't checked in today.`
+                    : `${daysSinceLastCheckin} days since ${displayName}'s last check-in.`}
+                </p>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  Send them a reminder to check in — it only takes a second.
+                </p>
+              </div>
+            )}
+
+            {/* Send encouragement */}
+            <div className="mt-4">
+              {nudgeSent ? (
+                <div className="w-full py-4 px-5 rounded-xl bg-primary/5 border border-primary/10 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Heart className="w-5 h-5 text-primary" />
+                    <span className="font-medium text-primary">Reminder sent!</span>
+                  </div>
+                  <p className="text-sm text-text-secondary mt-1">
+                    {displayName} will see it next time they open the app.
+                  </p>
+                </div>
+              ) : (
+                <button
+                  onClick={handleNudge}
+                  disabled={sending || nudgeCooldown}
+                  className="w-full py-4 px-5 rounded-xl bg-primary text-white font-medium hover:bg-primary/90 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  {sending
+                    ? 'Sending...'
+                    : nudgeCooldown
+                    ? 'Sent recently'
+                    : 'Send a check-in reminder'}
+                </button>
+              )}
+              {nudgeError && (
+                <p className="text-sm text-danger mt-2 text-center">{nudgeError}</p>
+              )}
+              {!isSubscribed && !nudgeSent && !nudgeCooldown && (
+                <p className="text-xs text-text-secondary text-center mt-2">
+                  {freeNudgeUsed
+                    ? 'Subscribe to send unlimited reminders'
+                    : 'First reminder is free — subscribe for unlimited'}
+                </p>
+              )}
+            </div>
+
+            {/* 7-day check-in history */}
+            {checkins.length > 0 && (
+              <div className="mt-6">
+                <CheckinHistory checkins={checkins} readOnly />
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -306,7 +358,7 @@ export default function PartnerDashboard() {
         </p>
       </div>
 
-      {/* Paywall modal — subscriber checkout inline */}
+      {/* Paywall modal — authenticated supporter checkout */}
       {showPaywall && session && (
         <PaywallModal
           onClose={() => setShowPaywall(false)}

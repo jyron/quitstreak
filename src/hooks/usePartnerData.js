@@ -14,6 +14,8 @@ export function usePartnerData(shareCode) {
   const [nudgeCooldown, setNudgeCooldown] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [senderProfile, setSenderProfile] = useState(null)
+  const [freeNudgeUsed, setFreeNudgeUsed] = useState(false)
+  const [activeGift, setActiveGift] = useState(null)
   const [daysSinceLastCheckin, setDaysSinceLastCheckin] = useState(null)
 
   useEffect(() => {
@@ -23,14 +25,15 @@ export function usePartnerData(shareCode) {
       return
     }
 
-    // Check if we're still in cooldown from a previous visit
-    const lastNudge = localStorage.getItem(`nudge_${shareCode}`)
-    if (lastNudge && Date.now() - Number(lastNudge) < NUDGE_COOLDOWN_MS) {
-      setNudgeCooldown(true)
-      const remaining = NUDGE_COOLDOWN_MS - (Date.now() - Number(lastNudge))
-      const timer = setTimeout(() => setNudgeCooldown(false), remaining)
-      var cooldownTimer = timer
-    }
+    // Purge leftover localStorage keys from the pre-server-gate nudge flow
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i)
+        if (k && (k.startsWith('nudge_free_') || /^nudge_[a-f0-9]{4,}$/.test(k))) {
+          localStorage.removeItem(k)
+        }
+      }
+    } catch {}
 
     let cancelled = false
 
@@ -62,25 +65,58 @@ export function usePartnerData(shareCode) {
 
       setProfile(profileData)
 
-      // Persist the follow relationship for authenticated users (fire and forget)
+      // Authenticated: resolve sender profile + follow state
       if (user) {
-        supabase
-          .from('supporter_follows')
-          .upsert(
-            { supporter_id: user.id, share_code: shareCode },
-            { onConflict: 'supporter_id,share_code', ignoreDuplicates: true }
-          )
-          .then()
-
-        // Fetch sender's profile to check subscription status
+        // Fetch sender profile to check subscription status
         const { data: senderData } = await supabase
           .from('profiles')
           .select('display_name, subscription_status')
           .eq('id', user.id)
           .maybeSingle()
 
-        if (!cancelled && senderData) {
-          setSenderProfile(senderData)
+        if (!cancelled && senderData) setSenderProfile(senderData)
+
+        // Fetch (or create) the follow row to know if free nudge was already used
+        const { data: followData } = await supabase
+          .from('supporter_follows')
+          .select('free_nudge_used')
+          .eq('supporter_id', user.id)
+          .eq('share_code', shareCode)
+          .maybeSingle()
+
+        if (!cancelled) {
+          setFreeNudgeUsed(followData?.free_nudge_used ?? false)
+        }
+
+        // Check if this user has an active gifted subscription
+        const { data: giftData } = await supabase
+          .from('gifted_subscriptions')
+          .select('id, gifter_user_id, status')
+          .eq('recipient_user_id', user.id)
+          .in('status', ['active', 'canceled'])
+          .limit(1)
+          .maybeSingle()
+
+        if (!cancelled && giftData) {
+          const { data: gifterData } = await supabase
+            .from('profiles')
+            .select('display_name')
+            .eq('id', giftData.gifter_user_id)
+            .maybeSingle()
+          if (!cancelled) {
+            setActiveGift({ ...giftData, gifter_name: gifterData?.display_name || null })
+          }
+        }
+
+        // Auto-create the follow row if missing (ignore errors; RPC will also upsert)
+        if (!followData) {
+          supabase
+            .from('supporter_follows')
+            .upsert(
+              { supporter_id: user.id, share_code: shareCode },
+              { onConflict: 'supporter_id,share_code', ignoreDuplicates: true }
+            )
+            .then()
         }
       }
 
@@ -103,7 +139,6 @@ export function usePartnerData(shareCode) {
       setCheckins(checkinData || [])
       setLoading(false)
 
-      // Compute days since last check-in
       if (checkinData && checkinData.length > 0) {
         const last = new Date(checkinData[0].created_at)
         const days = Math.floor((Date.now() - last.getTime()) / (1000 * 60 * 60 * 24))
@@ -115,47 +150,41 @@ export function usePartnerData(shareCode) {
 
     fetchData()
 
-    return () => {
-      cancelled = true
-      if (cooldownTimer) clearTimeout(cooldownTimer)
-    }
-  }, [shareCode])
+    return () => { cancelled = true }
+  }, [shareCode, user?.id])
 
-  const sendNudge = useCallback(async () => {
+  const sendNudge = useCallback(async (senderNameOverride) => {
     if (!profile || nudgeCooldown) return { error: 'Please wait before sending another.' }
+    if (!user) return { error: 'signup' }
 
-    // Check free nudge limit for authenticated non-subscribers
-    const isSubscribed = senderProfile?.subscription_status === 'active' || senderProfile?.subscription_status === 'canceled'
-    if (user && !isSubscribed) {
-      const freeUsed = localStorage.getItem(`nudge_free_${shareCode}`)
-      if (freeUsed) {
-        setShowPaywall(true)
-        return { error: 'paywall' }
-      }
-    }
+    const senderName = senderNameOverride ?? senderProfile?.display_name ?? null
 
-    // Look up the sender's display name if they're signed in
-    let senderName = senderProfile?.display_name || null
-
-    const { error } = await supabase
-      .from('nudges')
-      .insert({
-        user_id: profile.id,
-        share_code: shareCode,
-        sender_name: senderName,
-      })
+    const { data, error } = await supabase.rpc('send_nudge', {
+      p_share_code: shareCode,
+      p_sender_name: senderName,
+    })
 
     if (error) {
       return { error: 'Could not send encouragement. Please try again.' }
     }
 
-    // Mark free nudge as used for non-subscribers
-    if (user && !isSubscribed) {
-      localStorage.setItem(`nudge_free_${shareCode}`, '1')
+    // RPC returns { ok: boolean, reason?: string }
+    if (!data?.ok) {
+      if (data?.reason === 'paywall') {
+        setShowPaywall(true)
+        setFreeNudgeUsed(true)
+        return { error: 'paywall' }
+      }
+      if (data?.reason === 'signup') return { error: 'signup' }
+      if (data?.reason === 'self') return { error: "You can't nudge yourself." }
+      return { error: 'This share link is no longer active.' }
     }
 
-    // Set cooldown
-    localStorage.setItem(`nudge_${shareCode}`, String(Date.now()))
+    // Success — update local state
+    const selfSubbed = senderProfile?.subscription_status === 'active' || senderProfile?.subscription_status === 'canceled'
+    const isSubscribed = selfSubbed || !!activeGift
+    if (!isSubscribed) setFreeNudgeUsed(true)
+
     setNudgeSent(true)
     setNudgeCooldown(true)
     setTimeout(() => {
@@ -164,7 +193,12 @@ export function usePartnerData(shareCode) {
     }, NUDGE_COOLDOWN_MS)
 
     return { error: null }
-  }, [profile, shareCode, nudgeCooldown, senderProfile, user])
+  }, [profile, shareCode, nudgeCooldown, senderProfile, user, activeGift])
 
-  return { profile, checkins, loading, error, sendNudge, nudgeSent, nudgeCooldown, showPaywall, setShowPaywall, daysSinceLastCheckin, senderProfile }
+  return {
+    profile, checkins, loading, error,
+    sendNudge, nudgeSent, nudgeCooldown,
+    showPaywall, setShowPaywall,
+    daysSinceLastCheckin, senderProfile, freeNudgeUsed, activeGift,
+  }
 }
