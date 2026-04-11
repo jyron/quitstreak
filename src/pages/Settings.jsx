@@ -329,7 +329,7 @@ function ShareSection({ profile }) {
   const [copied, setCopied] = useState(false)
 
   const shareUrl = profile?.share_code
-    ? `${window.location.origin}/partner/${profile.share_code}`
+    ? `${import.meta.env.VITE_APP_URL}/partner/${profile.share_code}`
     : null
 
   async function handleCopy() {
