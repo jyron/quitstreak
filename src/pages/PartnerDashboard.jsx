@@ -13,7 +13,7 @@ const TYPE_LABELS = {
   vaping: 'vaping',
 }
 
-function PaywallModal({ onClose, displayName, session, shareCode }) {
+function PaywallModal({ onClose, displayName, session, shareCode, freeNudgeUsed }) {
   const [plan, setPlan] = useState('yearly')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -57,10 +57,12 @@ function PaywallModal({ onClose, displayName, session, shareCode }) {
             <Heart className="w-7 h-7 text-secondary" />
           </div>
           <h2 className="font-serif text-2xl font-bold text-text">
-            You made their day!
+            {freeNudgeUsed ? 'You made their day!' : `Support ${displayName}`}
           </h2>
           <p className="mt-2 text-text-secondary leading-relaxed">
-            {displayName} saw your encouragement. Subscribe to keep sending unlimited reminders.
+            {freeNudgeUsed
+              ? `${displayName} saw your encouragement. Subscribe to keep sending unlimited reminders.`
+              : `Subscribe to send ${displayName} unlimited check-in reminders and cheer them on every day.`}
           </p>
         </div>
 
@@ -329,11 +331,14 @@ export default function PartnerDashboard() {
                 <p className="text-sm text-danger mt-2 text-center">{nudgeError}</p>
               )}
               {!isSubscribed && !nudgeSent && !nudgeCooldown && (
-                <p className="text-xs text-text-secondary text-center mt-2">
+                <button
+                  onClick={() => setShowPaywall(true)}
+                  className="mt-2 w-full text-xs text-primary hover:text-primary/80 text-center underline underline-offset-2"
+                >
                   {freeNudgeUsed
                     ? 'Subscribe to send unlimited reminders'
                     : 'First reminder is free — subscribe for unlimited'}
-                </p>
+                </button>
               )}
             </div>
 
@@ -365,6 +370,7 @@ export default function PartnerDashboard() {
           displayName={displayName}
           session={session}
           shareCode={shareCode}
+          freeNudgeUsed={freeNudgeUsed}
         />
       )}
     </div>

@@ -14,6 +14,7 @@ function isValidEmail(email) {
 }
 
 export default async function handler(req, res) {
+  try {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -28,7 +29,13 @@ export default async function handler(req, res) {
   // Validate plan
   const { plan, successPath, giftForEmail } = req.body || {}
   const priceId = PRICE_IDS[plan]
-  if (!priceId) return res.status(400).json({ error: 'Invalid plan. Use "monthly" or "yearly".' })
+  if (!priceId) {
+    console.error('[create-checkout] Missing price id for plan', plan, 'env keys:', {
+      monthly: !!process.env.STRIPE_MONTHLY_PRICE_ID,
+      yearly: !!process.env.STRIPE_YEARLY_PRICE_ID,
+    })
+    return res.status(400).json({ error: 'Checkout is temporarily unavailable. Please try again soon.' })
+  }
 
   const isGift = giftForEmail != null
   if (isGift) {
@@ -83,5 +90,9 @@ export default async function handler(req, res) {
     metadata: subscriptionMetadata,
   })
 
-  return res.status(200).json({ url: session.url })
+    return res.status(200).json({ url: session.url })
+  } catch (err) {
+    console.error('[create-checkout] Unhandled error:', err)
+    return res.status(500).json({ error: err?.message || 'Could not start checkout. Please try again.' })
+  }
 }
